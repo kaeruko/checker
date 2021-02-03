@@ -1,0 +1,48 @@
+=== Japanese Proofreading Preview ===
+Contributors: mobamen
+Donate link: 
+Tags: proofreadning,post, update content, update post, update page
+Requires at least: 4.2
+Tested up to: 4.9.5
+Stable tag: 1.0.1
+License: GPLv2 or later
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
+
+provide information that assists Japanese proofreading in original preview window.
+
+== Description ==
+This plugin is to provide information that assists Japanese proofreading in original preview window.
+This plugin needs an Yahoo! Japan Developer's network account, because it uses 'KouseiService' API of Yahoo APIs.
+(A proofreading API for Japanese sentence. For details see http://developer.yahoo.co.jp/webapi/jlp/kousei/v1/kousei.html)
+
+For more detailed information on this plugin, see below URL.
+http://mobamen.info/wordpress_proofreading
+
+== Installation ==
+
+1. Upload the "yproofreading" directory and all its contents to your `/wp-content/plugins/` directory.
+2. Activate the plugin through the "Plugins" menu in WordPress.
+3. Optimize your setting through the "Settings > 校正支援" menu in WordPress.
+
+== Screenshots ==
+
+1. View.
+2. Admin.
+3. Preview Button.
+4. Preview Window.
+
+== Changelog ==
+
+= 1.0.0 =
+* First public release to WordPress.org.
+
+= 1.0.1 =
+* Removed unnecessary files.
+* Modify the threshold of spliting the sentence from 5,000 to 12700.
+* In case the pointed word is single letter, append a following letter to clarify the meanings.
+
+== Upgrade notice ==
+
+
+== Arbitrary section 1 ==
+
