@@ -156,65 +156,20 @@ add_filter('plugin_action_links_' . plugin_basename(__FILE__) ,'yproofreading_ap
 * Yahoo APIに渡すnofilter属性を作成する。
 */
 function yproofreading_build_nofilter() {
-    $nofilter ="";
-    for ($filter_num = 1 ; $filter_num <= 17 ; $filter_num++){
-        $option_id = 'yahoo_nofilter' . $filter_num ;
-        if (get_option($option_id) == 1) {
-            $append = strval($filter_num) . ",";
-            $nofilter .= $append;
-        }
-    }
-    if ($nofilter != "") {
-        $nofilter = substr($nofilter, 0, -1);
-    }
-    
+    $nofilter ="";    
     return $nofilter;
 }
 
 //Yahoo APIに文章校正のリクエストを投げて結果をSimpleXMLElementで返す関数
 function yproofreading_get_kousei_result($sentence) {
-    $api = 'http://jlp.yahooapis.jp/KouseiService/V1/kousei';
-    $appid = get_option('yahoo_appid');
-    
-    $params = array(
-        'sentence' => $sentence
-    );
-    
-    // no_filterが設定されている場合はパラメータに追加する
-    $nofilter = yproofreading_build_nofilter();
-    if ( $nofilter != "" ) {
-        $params["no_filter"] = $nofilter ;
-    }
-    
-    $ch = curl_init($api);
-    curl_setopt_array($ch, array(
-        CURLOPT_POST => true,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_USERAGENT => "Yahoo AppID: $appid",
-        CURLOPT_POSTFIELDS => http_build_query($params),
-    ));
-    $results = curl_exec($ch);
-    //$info = curl_getinfo($ch);
-    //echo $info['request_size'] ;
-    curl_close($ch);
-    if (false === $results) {
-        echo "<div class='proofreading-error'>Internal Server Error</div>";
-    }
-    $results = new \SimpleXMLElement($results);
-    if ($results->Message) {
-        echo "<div class='proofreading-error'>" . (string)$results->Message . "</div>";
-    }
-    return $results;
 }
 
-function warning_replace ($warning, $pattern,$replacement, $subject) {
-    $t[$i] = preg_replace("/{$v}/","**");
-}
 
 function writing_do_checker ($content) {
     if(!isset($_GET['preview_id']) || !isset($_GET['proofreading']) ){
         return;
     }
+
     $content = preg_replace( '/<p>|<\/p>/msi','',$content);
 
     $t = preg_split("/[\n|\r,]+/", $content);
@@ -232,6 +187,27 @@ function writing_do_checker ($content) {
     $norma = array("kwcount"=> array(),"strong"=> 0, "color"=> 0 , "abst_list" => 0);
     $abstract = false;
     $results = array();
+    $id = get_the_ID();
+    $type = "";
+    //メタディスクリプション
+    $the_page_meta_description = (get_post_meta($id, 'the_page_meta_description', true));
+    $tmp = get_len($the_page_meta_description);
+    $type = ($tmp > 120 || $tmp < 100) ? "warning":"debug";
+    $results["meta"]["meta_desc"] = array('type' => $type, 'data' => "{$the_page_meta_description}({$tmp}文字)");
+    //メタキーワード
+    $metakw = explode(",", get_post_meta($id, 'the_page_meta_keywords', true));
+    $type = (count($metakw) < 5) ? "warning":"debug";
+    $results["meta"]["metakw"] = array('type' => $type, 'data' => (implode("-", $metakw))."(".(count($metakw)).")" );
+    //メタタグ
+    $tags = array_map(function($tag) { return $tag->name; },get_the_tags());
+    $type = (count($tags) !== 3) ? "warning":"debug";
+    $results["meta"]["tag"] = array('type' => $type, 'data' => implode("-", $tags) . "(". (count($tags)).")");
+    //カテゴリー
+    $category = array_map(function($tag) { return $tag->name; },get_the_category());
+    $type = (count($category) !== 1) ? "warning":"debug";
+    $results["meta"]["category"] = array('type' => $type, 'data' =>(implode("-", $category)));
+
+
     $n = 0;
     $intro_count = 0;
     $tcount = count($t);
@@ -256,7 +232,7 @@ function writing_do_checker ($content) {
         if(preg_match("/[０-９]/u", $t[$i], $matches)){
             $results[$i]["warning"]["zenkaku_num"] = $t[$i];
         }
-        // 見出し<h2><h3>
+        // 見出し<h2><h3>か最後まできたらキーワードチェック
         if(preg_match("/(<h2>).*<\/h2>|(<h3>).*<\/h3>/", $t[$i], $matches)
 || $tcount == ($i+1)
     ){
@@ -363,11 +339,11 @@ function writing_do_checker ($content) {
                 $len = get_len($line);
                 //見出し2の文字数が17~23
                 if($len < 17){
-                    $results[$i]["warning"]["len_min"] = $len;
+                    $results[$i]["warning"]["len_min"] = "{$len}文字";
                 }elseif($len > 23){
-                    $results[$i]["warning"]["len_max"] = $len;
+                    $results[$i]["warning"]["len_max"] = "{$len}文字";
                 }else{
-                    $results[$i]["warning"]["len_max"] = "OK:{$len}文字";
+                    $results[$i]["debug"]["len_max"] = "{$len}文字";
                 }
 
                 //指定キーワードが順番どおりに入る
@@ -468,7 +444,7 @@ function writing_do_checker ($content) {
             //リストタグの場合は字数や文末をチェックしない
             if(!preg_match("/<li>|<\/li>/u", $t[$i], $matches)){
                 //文末に。か？か！か♪が入っている(まとめ、空行、タイトル、テーブル以外)
-                if(!preg_match("/(？|！|。|♪|\))$/u", $line, $matches)){
+                if(!preg_match("/(？|！|。|♪|\)|）)$/u", $line, $matches)){
                     //下の行がリストタグ
 
                     preg_match("/.$/u", $line, $matches);
@@ -507,10 +483,9 @@ function writing_do_checker ($content) {
     }
 
     //見出し2はまとめいれて4つ以上           
-    if($chapter["number"] < 3){
-        $results["warning"]["chap_no"] = $chapter["number"];
-    }
-    $message = $results;
+    $type = ($chapter["number"] < 3) ? "warning":"debug";
+    $results["meta"]["chap_no"] = array('type' => $type, 'data' =>$chapter["number"]);
+
     // $a = get_post_meta_by_id($_GET['preview_id']);
     // $b = get_post_meta($a["meta_id"]);
     // error_log(print_r( get_post($_GET['preview_id'] )->post_title));
@@ -518,43 +493,57 @@ function writing_do_checker ($content) {
     $tmp = explode(" ", $data->post_title);
     $len = get_len($tmp[count($tmp)-1]);
     //タイトルが28~32文字
-    if($len < 28){
-        $results["warning"]["len_min"] = $len;
-    }
-    if($len > 32){
-        $results["warning"]["len_max"] = $len;
-    }
-    // error_log(print_r($len));
+    $type = ($len < 28 || $len > 32) ? "warning":"debug";
+    $results["meta"]["title_len"] = array('type' => $type, 'data' => $tmp[count($tmp)-1]."(".$len."文字)");
+
     //ステータスチェック
     //パーマリンク
 
     //アイキャッチがある
     //カテゴリは1つ。とタグの設定
 
-    $result  = "<div class='proofreading-result'>
+    $warning  = "<div class='proofreading-result'>
 <div class='proofreading-summary'>
 <p><span class='proofreading-h2'>チェッカー</span></p>";
 
+
+
+    foreach ($results["meta"] as $k => $v) {
+        if($v["type"] == "warning"){
+            $warning .="<span class='proofreading-h3 warning1'>";
+        }else{
+            $warning .="<span class='proofreading-h3 debug1'>";
+        }
+        $warning .= get_warning($k, $v["data"]) ."<br /></span>";
+    }
+
     for ($i=0; $i < count($t); $i++) { 
-    $warning = "";
+        // if($v["type"] == "warning"){
+            // $warning .="<span class='proofreading-item warning1'  title='";
+        // }else{
+            // $warning .="<span class='proofreading-item' title='";
+        // }
+            // $warning .= "'>$t[$i]</span>";
+        // $warning .= get_warning($k, $v["data"]) ."<br /></span>";
+
+
+
         if(isset($results[$i]["warning"])){
             $warning .="<span class='proofreading-item warning1'  title='確認:";
-// var_dump($results[$i]["warning"]);
             foreach ($results[$i]["warning"] as $k => $v) {
 
 
                 $warning .= "\n ".get_warning($k, $v) ;
             }
             $warning .= "'>$t[$i]</span>";
-            $result .= $warning;
         }else{
-            $result .= $t[$i];
+            $warning .= $t[$i];
         }
-        $result .= "<br />";
+        $warning .= "<br />";
     }
-    $result .= "タイトルの文字数:{$len}";
-    $result .= $tmp[count($tmp)-1];
-    return $result ;
+    $ret .= "タイトルの文字数:{$len}";
+    $ret .= $tmp[count($tmp)-1];
+    return $warning ;
 }
 
 function get_warning($warning, $val) {

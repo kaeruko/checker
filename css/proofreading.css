@@ -70,80 +70,49 @@
 */
 
 .proofreading-result .color1 {
-	background-color: #ffb0b0;
+	background-color: #9999ff;
 }
 
 .proofreading-result .color2 {
-	background-color: #ffb0d4;
+	background-color: #ccccff;
 }
 
 .proofreading-result .color3 {
-	background-color: #ffb0f9;
+	background-color: #99ccff;
 }
 
 .proofreading-result .color4 {
-	background-color: #f6b0ff;
-}
-
-.proofreading-result .color5 {
-	background-color: #dab0ff;
-}
-
-.proofreading-result .color6 {
-	background-color: #b5b0ff;
-}
-
-.proofreading-result .color7 {
-	background-color: #b0c4ff;
-}
-
-.proofreading-result .color8 {
-	background-color: #b0daff;
-}
-
-.proofreading-result .color9 {
-	background-color: #b0fcff;
-}
-
-.proofreading-result .color10 {
-	background-color: #b0ffe9;
-}
-
-.proofreading-result .color11 {
-	background-color: #b0ffda;
-}
-
-.proofreading-result .color12 {
-	background-color: #b0ffc0;
-}
-
-.proofreading-result .color13 {
-	background-color: #bbffb0;
-}
-
-.proofreading-result .color14 {
 	background-color: #daffb0;
 }
 
-.proofreading-result .color15 {
+.proofreading-result .color5 {
 	background-color: #f6ffb0;
 }
 
-.proofreading-result .color16 {
+.proofreading-result .color6 {
 	background-color: #ffe3b0;
 }
 
-.proofreading-result .color17 {
+.proofreading-result .color7 {
 	background-color: #ffceb0;
 }
 
 .proofreading-result .warning1 {
-	background-color: #ff0000;
+	background-color: #ffccff;
 }
-
 .proofreading-result .warning1 h2 {
-	background-color: #ffceb0;
+	background-color: #ffccff;
 }
 .proofreading-result .warning1 h3 {
-	background-color: #ffceb0;
+	background-color: #ffccff;
+}
+
+.proofreading-result .debug1 {
+	background-color: #ccffcc;
+}
+.proofreading-result .debug1 h2 {
+	background-color: #ccffcc;
+}
+.proofreading-result .debug1 h3 {
+	background-color: #ccffcc;
 }
