@@ -241,7 +241,7 @@ function writing_do_checker ($content) {
             if(preg_match("/、/u", $line, $_m)){
                 $results[$i]["warning"]["kanma"] = $_m[0];
             }
-            //見出し2の?、!が半角か
+            //見出しの?、!が半角か
             if(preg_match("/？|！|♪/u", $line, $_m)){
                 $results[$i]["warning"]["zenkaku_kigo"] = $_m[0];
             }
@@ -262,14 +262,9 @@ function writing_do_checker ($content) {
                 }
                 //導入文の文字数が300~350
                 // error_log(print_r("intro_count:{$intro_count}"));
-                if($chapter["number"] === -1 
-                    && $intro_count < 300 || 
-                     $intro_count > 350){
-                    $results[0]["warning"]["intro_count"] = $intro_count;
-                }else{
-                    $results[0]["debug"]["intro_count"] = "OK:{$intro_count}文字";
+                $type = ($chapter["number"] === -1 && ($intro_count < 300 || $intro_count > 350)) ? "warning":"debug";
+                $results["meta"]["intro_count"] = array("type" => $type, "data"=>$intro_count);
 
-                }
                 if(!$norma["color"] === 0  ){
                     // error_log(print_r("{$t[$title_line]}\n"));
                     $results[$title_line]["warning"]["notag"] = $norma["color"];
@@ -281,26 +276,32 @@ function writing_do_checker ($content) {
 
 
                 // error_log(print_r("chap:{$chapter['number']} n:{$n}"));
+                //章終わり。kwチェック
+                $tmp = $type = "";
+                foreach ($norma["kwcount"] as $k => $v) {
+                // error_log(print_r("\n$t[$i] {$k}が{$v}:\n"));
+                    if($v < 3){
+                        $results[$title_line]["warning"]["kwcount"] = $norma["kwcount"];
+                    }
+                    $tmp .= "\n{$k}:{$v}";
+                }
+                $type = (count($norma["kwcount"]) !== 3) ? "warning":"debug";
+
+                if($chapter["number"] === -1){
+                    $results["meta"]["kw0"] = array("type" => $type, "data"=> count($norma["kwcount"]));
+                    $results["meta"]["kwcheck"] = array("type" => $type, "data"=> "導入文:{$tmp}");
+                }else{
+                    $results[$title_line][$type]["kw0"] = count($norma["kwcount"]);
+                    $results[$title_line]["warning"]["kwcheck"] = $tmp;
+                }
                 $chapter["section"] = 0;
                 $chapter["number"]++;
                 $n = $chapter["number"];
                 if($chapter["number"] < 0){
                     $n = 0;
                 }
-                //章終わり。kwチェック
-                $tmp = "";
-                foreach ($norma["kwcount"] as $k => $v) {
-                // error_log(print_r("\n$t[$i] {$k}が{$v}:\n"));
 
-                    if(count($norma["kwcount"]) !== 3){
-                        $results[$title_line]["warning"]["kw0"] = $norma["kwcount"];
-                    }
-                    if($v < 3){
-                        $results[$title_line]["warning"]["kwcount"] = $norma["kwcount"];
-                    }
-                    $tmp .= "\n{$k}:{$v}";
-                }
-                $results[$title_line]["warning"]["kwcheck"] = $tmp;
+
                 $norma = array("kwcount"=> array(),"strong"=> 0, "color"=> 0 , "abst_list" => 0);
                 if($tcount == ($i+1)){
                     continue;
@@ -378,16 +379,16 @@ function writing_do_checker ($content) {
             if(preg_match("/^<div>.*<\/div>$/u", $t[$i], $matches)){
                 $results[$i]["warning"]["enter"] = $matches;
             }
-            //文頭にですが
-            if(preg_match("/^ですが/u", $t[$i], $matches)){
-                $results[$i]["warning"]["desuga"] = $matches[0];
-            }
-
             $line = strip_tags($t[$i]);
             //空行でもない空白の場合(divタグなど)
             if($line == ""){
                 continue;
             }
+            //文頭にですが
+            if(preg_match("/^ですが/u", $line, $matches)){
+                $results[$i]["warning"]["desuga"] = $matches[0];
+            }
+
             //文中で!?は使わない
             if(preg_match("/[!|?]/u", $line, $matches)){
                 $results[$i]["warning"]["hankaku_kigo"] = $matches[0];
@@ -482,7 +483,7 @@ function writing_do_checker ($content) {
         $results[$i]["warning"]["abst_list"] = $norma["abst_list"];
     }
 
-    //見出し2はまとめいれて4つ以上           
+    //見出し2はまとめいれて4つ以上
     $type = ($chapter["number"] < 3) ? "warning":"debug";
     $results["meta"]["chap_no"] = array('type' => $type, 'data' =>$chapter["number"]);
 
@@ -524,7 +525,7 @@ function writing_do_checker ($content) {
             foreach ($results[$i]["warning"] as $k => $v) {
 
 
-                $warning .= "\n ".warning_desc($k, $v) ;
+                $warning .= "\n ".strip_tags(warning_desc($k, $v)) ;
             }
             $warning .= "'>$t[$i]</span>";
         }else{
@@ -561,26 +562,33 @@ function warning_desc($warning, $val) {
             $result = sprintf("※スマホで見ると4行以上です 21~84文字推奨【現在%s文字】", $val);
             break;
         case "kwcount":
+            $result = sprintf("キーワード埋め込み %s", $val);
         case "kwcheck":
-            $result = sprintf("※キーワード埋め込み %s", $val);
+            $result = sprintf("キーワード埋め込み(それぞれ3以上)</span><br />%s", $val);
+            break;
+        case "kw0":
+            $result = sprintf("埋め込みキーワードの数(3)</span><br />%s", $val);
             break;
         case "meta_desc":
-            $result = sprintf("メタディスクリプション(推奨115~120文字) </span><br />%s", $val);
+            $result = sprintf("メタディスクリプション(115~120文字) </span><br />%s", $val);
             break;
         case "metakw":
             $result = sprintf("メタキーワード(5~6) </span><br />%s", $val);
             break;
         case "tag":
-            $result = sprintf("タグ </span><br />%s", $val);
+            $result = sprintf("タグ(3つ) </span><br />%s", $val);
             break;
         case "category":
-            $result = sprintf("カテゴリー </span><br />%s", $val);
+            $result = sprintf("カテゴリー(1つ) </span><br />%s", $val);
             break;
         case "chap_no":
             $result = sprintf("見出し2の数(4以上) </span><br />%s", $val);
             break;
         case "title_len":
             $result = sprintf("タイトルの文字数(28~32) </span><br />%s", $val);
+            break;
+        case "intro_count":
+            $result = sprintf("導入文の文字数(300±) </span><br />%s文字", $val);
             break;
         default:
             $result = sprintf("{$warning} %s", $val);
