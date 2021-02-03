@@ -504,36 +504,27 @@ function writing_do_checker ($content) {
 
     $warning  = "<div class='proofreading-result'>
 <div class='proofreading-summary'>
-<p><span class='proofreading-h2'>チェッカー</span></p>";
+<p><span class='proofreading-h2'>サマリー</span></p>";
 
 
 
     foreach ($results["meta"] as $k => $v) {
         if($v["type"] == "warning"){
-            $warning .="<span class='proofreading-h3 warning1'>";
+            $warning .="<span class='proofreading warning1'>";
         }else{
-            $warning .="<span class='proofreading-h3 debug1'>";
+            $warning .="<span class='proofreading debug1'>";
         }
-        $warning .= get_warning($k, $v["data"]) ."<br /></span>";
+        $warning .= warning_desc($k, $v["data"]) ."<br /></span>";
     }
+    $warning  .= "<p><span class='proofreading-h2'>本文</span></p>";
 
     for ($i=0; $i < count($t); $i++) { 
-        // if($v["type"] == "warning"){
-            // $warning .="<span class='proofreading-item warning1'  title='";
-        // }else{
-            // $warning .="<span class='proofreading-item' title='";
-        // }
-            // $warning .= "'>$t[$i]</span>";
-        // $warning .= get_warning($k, $v["data"]) ."<br /></span>";
-
-
-
         if(isset($results[$i]["warning"])){
             $warning .="<span class='proofreading-item warning1'  title='確認:";
             foreach ($results[$i]["warning"] as $k => $v) {
 
 
-                $warning .= "\n ".get_warning($k, $v) ;
+                $warning .= "\n ".warning_desc($k, $v) ;
             }
             $warning .= "'>$t[$i]</span>";
         }else{
@@ -546,19 +537,6 @@ function writing_do_checker ($content) {
     return $warning ;
 }
 
-function get_warning($warning, $val) {
-    $result = "";
-    switch ($warning) {
-        case "no_blank":
-        case "bad_blank":
-            $result = warning_desc($warning, $val);
-            break;        
-        default:
-            $result = warning_desc($warning, $val);
-            break;
-    }
-    return $result;
-}
 
 function warning_desc($warning, $val) {
     $val = strip_tags($val);
@@ -585,6 +563,24 @@ function warning_desc($warning, $val) {
         case "kwcount":
         case "kwcheck":
             $result = sprintf("※キーワード埋め込み %s", $val);
+            break;
+        case "meta_desc":
+            $result = sprintf("メタディスクリプション(推奨115~120文字) </span><br />%s", $val);
+            break;
+        case "metakw":
+            $result = sprintf("メタキーワード(5~6) </span><br />%s", $val);
+            break;
+        case "tag":
+            $result = sprintf("タグ </span><br />%s", $val);
+            break;
+        case "category":
+            $result = sprintf("カテゴリー </span><br />%s", $val);
+            break;
+        case "chap_no":
+            $result = sprintf("見出し2の数(4以上) </span><br />%s", $val);
+            break;
+        case "title_len":
+            $result = sprintf("タイトルの文字数(28~32) </span><br />%s", $val);
             break;
         default:
             $result = sprintf("{$warning} %s", $val);
