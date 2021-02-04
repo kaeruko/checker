@@ -211,7 +211,8 @@ function writing_do_checker ($content) {
     $n = 0;
     $intro_count = 0;
     $tcount = count($t);
-    for ($i=0; $i < count($t); $i++) { 
+    for ($i=0; $i < count($t); $i++) {
+        $line = strip_tags($t[$i]);
         //空行の場合、下にhrか空行があるかチェック
         if(preg_match("/&nbsp;/u", $t[$i], $matches)){
             //これだと3空行があってもスルーされるな
@@ -262,8 +263,11 @@ function writing_do_checker ($content) {
                 }
                 //導入文の文字数が300~350
                 // error_log(print_r("intro_count:{$intro_count}"));
-                $type = ($chapter["number"] === -1 && ($intro_count < 300 || $intro_count > 350)) ? "warning":"debug";
-                $results["meta"]["intro_count"] = array("type" => $type, "data"=>$intro_count);
+                if($chapter["number"] === -1 ){
+                    $type = ($intro_count < 300 || $intro_count > 350) ? "warning":"debug";
+                    $results["meta"]["intro_count"] = array("type" => $type, "data"=>$intro_count);
+
+                }
 
                 if(!$norma["color"] === 0  ){
                     // error_log(print_r("{$t[$title_line]}\n"));
@@ -302,10 +306,10 @@ function writing_do_checker ($content) {
                 }
 
 
-                $norma = array("kwcount"=> array(),"strong"=> 0, "color"=> 0 , "abst_list" => 0);
                 if($tcount == ($i+1)){
                     continue;
                 }
+                $norma = array("kwcount"=> array(),"strong"=> 0, "color"=> 0 , "abst_list" => 0);
                 //直前に空行2行ある
                 if($t[$i-2] !== "&nbsp;"){
                 // error_log(print_r("\n{$t[$i-1]}\n{$t[$i-2]}\n"));
@@ -344,7 +348,7 @@ function writing_do_checker ($content) {
                 }elseif($len > 23){
                     $results[$i]["warning"]["len_max"] = "{$len}文字";
                 }else{
-                    $results[$i]["debug"]["len_max"] = "{$len}文字";
+                    $results[$i]["warning"]["h2_len"] = "{$len}文字";
                 }
 
                 //指定キーワードが順番どおりに入る
@@ -369,20 +373,45 @@ function writing_do_checker ($content) {
             }
 
         }else{
+            //空行でもない空白の場合(divタグなど)
+            if($line == ""){
+                continue;
+            }
+            //リストタグの場合は字数や文末をチェックしない
+            if(!preg_match("/<li>|<\/li>/u", $t[$i], $matches)){
+                //文末に。か？か！か♪が入っている(まとめ、空行、タイトル、テーブル以外)
+                if(!preg_match("/(？|！|。|♪|\)|）)$/u", $line, $matches)){
+                    //下の行がリストタグ
+
+                    preg_match("/.$/u", $line, $matches);
+                    $results[$i]["warning"]["ending"] = $matches[0];
+                }
+                //改行までの文字列がスマホで2行~4行に収まる
+                $l = get_len($line);
+                // error_log(print_r("get_len:{$line}\n"));
+                if($l < 21){
+                    $results[$i]["warning"]["tooshort"] = $l;
+                    //下の行がリストタグ
+                }elseif($l > 84){
+                    $results[$i]["warning"]["toolong"] = $l;
+                }
+            }
             //まとめの箇条書きカウント
-            if($abstract && preg_match("/<li>/u", $t[$i], $matches)){
-            // error_log(print_r("{$t[$i]} {$norma['abst_list']}\n"));
-                $norma["abst_list"] += 1;
+            if(preg_match("/<li>|<\/li>/u", $t[$i], $matches)){
+                if($abstract){
+                    $norma["abst_list"] += 1;
+                }else{
+                    //<div class="blank-box 
+                    //まとめ以外の箇条書きの場合上に文章があること
+                    if(preg_match("/^<h2>|^<h3>/u", $t[$i-1], $matches)){
+
+                    }
+                }
             }
 
             //shift+enter
             if(preg_match("/^<div>.*<\/div>$/u", $t[$i], $matches)){
                 $results[$i]["warning"]["enter"] = $matches;
-            }
-            $line = strip_tags($t[$i]);
-            //空行でもない空白の場合(divタグなど)
-            if($line == ""){
-                continue;
             }
             //文頭にですが
             if(preg_match("/^ですが/u", $line, $matches)){
@@ -442,25 +471,6 @@ function writing_do_checker ($content) {
             if($chapter["number"] === -1){
                 $intro_count += get_len($line);
             }
-            //リストタグの場合は字数や文末をチェックしない
-            if(!preg_match("/<li>|<\/li>/u", $t[$i], $matches)){
-                //文末に。か？か！か♪が入っている(まとめ、空行、タイトル、テーブル以外)
-                if(!preg_match("/(？|！|。|♪|\)|）)$/u", $line, $matches)){
-                    //下の行がリストタグ
-
-                    preg_match("/.$/u", $line, $matches);
-                    $results[$i]["warning"]["ending"] = $matches[0];
-                }
-                //改行までの文字列がスマホで2行~4行に収まる
-                $l = get_len($line);
-                // error_log(print_r("get_len:{$line}\n"));
-                if($l < 21){
-                    $results[$i]["warning"]["tooshort"] = $l;
-                    //下の行がリストタグ
-                }elseif($l > 84){
-                    $results[$i]["warning"]["toolong"] = $l;
-                }
-            }
 
             //テーブルチェック
 
@@ -478,10 +488,8 @@ function writing_do_checker ($content) {
 
     }
     //まとめのリストタグが4000文字を超える場合6~8
-    if(get_len(strip_tags($content)) > 4000
-        && $norma["abst_list"] < 6){
-        $results[$i]["warning"]["abst_list"] = $norma["abst_list"];
-    }
+    $type = (get_len(strip_tags($content)) > 4000 && $norma["abst_list"] < 6  ) ? "warning":"debug";
+    $results["meta"]["abst_list"] = array('type' => $type, 'data' => $norma["abst_list"]);
 
     //見出し2はまとめいれて4つ以上
     $type = ($chapter["number"] < 3) ? "warning":"debug";
