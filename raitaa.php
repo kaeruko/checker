@@ -1,15 +1,15 @@
 <?php
 /*
-Plugin Name: Japanese Proofreading Preview
+Plugin Name: raitaa
 Plugin URI: 
-Description: 投稿プレビュー画面にて、日本語校正支援情報を表示する（Yahoo! APIを使用)。
-Author: しんさん
-Version: 1.0.1
-Author URI:http://mobamen.info
+Description: WEBライティングの記事をチェックする
+Author: よきな
+Version: 1.0.0
+Author URI:http://
 */
 
 
-function writing_do_checker ($content) {
+function raitaa_do_checker ($content) {
     if(!isset($_GET['preview_id']) || !isset($_GET['writer']) ){
         return;
     }
@@ -18,21 +18,20 @@ function writing_do_checker ($content) {
 
     $t = preg_split("/[\n|\r,]+/", $content);
 
-    $chapter["keyword"] = array(
-        0 => array("パフ","洗う","頻度"),
-        1 => array("パフ","洗う","ダイソー"),
-        2 => array("パフ","洗う","食器用洗剤"),
-        3 => array("パフ","洗う","石鹸"),
-        4 => array("パフ","洗う","クレンジングオイル"),
-    );
     $chapter["number"] = -1;
     $chapter["section"] = 0;
     $chapter["line"][-1] = 0;
+    $chapter["keyword"] = array();
     $norma = array("kwcount"=> array(),"strong"=> 0, "color"=> 0 , "abst_list" => 0);
     $abstract = false;
     $results = array();
     $id = get_the_ID();
     $type = "";
+    $writer_keyword = get_post_meta($id, 'writer_keyword', true);
+    if($writer_keyword){
+        $chapter["keyword"] = array_map(function($w) { return explode("-", $w); },
+        explode(",", $writer_keyword));
+    }
     //メタディスクリプション
     $the_page_meta_description = (get_post_meta($id, 'the_page_meta_description', true));
     $tmp = get_len($the_page_meta_description);
@@ -189,12 +188,12 @@ function writing_do_checker ($content) {
                 // $results[$i]["contents"] = $line;    //ここは共通
                 $len = get_len($line);
                 //見出し2の文字数が17~23
-                if($len < 17){
-                    $results[$i]["warning"]["len_min"] = "{$len}文字";
+                if($len < 15){
+                    $results[$i]["warning"]["len_min"] = "{$len}文字 △";
                 }elseif($len > 23){
-                    $results[$i]["warning"]["len_max"] = "{$len}文字";
+                    $results[$i]["warning"]["len_max"] = "{$len}文字 △";
                 }else{
-                    $results[$i]["warning"]["h2_len"] = "{$len}文字";
+                    $results[$i]["warning"]["h2_len"] = "{$len}文字 ○";
                 }
 
                 //指定キーワードが順番どおりに入る
@@ -361,13 +360,11 @@ function writing_do_checker ($content) {
 <div class='proofreading-summary'>
 <p><span class='proofreading-h2'>サマリー</span></p>";
 
-
-
     foreach ($results["meta"] as $k => $v) {
         if($v["type"] == "warning"){
-            $warning .="<span class='proofreading warning1'>";
+            $warning .="<span class='proofreading warning1'>△";
         }else{
-            $warning .="<span class='proofreading debug1'>";
+            $warning .="<span class='proofreading debug1'>○";
         }
         $warning .= warning_desc($k, $v["data"]) ."<br /></span>";
     }
@@ -377,8 +374,6 @@ function writing_do_checker ($content) {
         if(isset($results[$i]["warning"])){
             $warning .="<span class='proofreading-item warning1'  title='確認:";
             foreach ($results[$i]["warning"] as $k => $v) {
-
-
                 $warning .= "\n ".strip_tags(warning_desc($k, $v)) ;
             }
             $warning .= "'>$t[$i]</span>";
@@ -444,6 +439,9 @@ function warning_desc($warning, $val) {
         case "intro_count":
             $result = sprintf("導入文の文字数(300±) </span><br />%s文字", $val);
             break;
+        case "abst_list":
+            $result = sprintf("まとめの箇条書き(4000文字以上の場合は6~8) </span><br />%s", $val);
+            break;
         default:
             $result = sprintf("{$warning} %s", $val);
             break;
@@ -474,7 +472,7 @@ function writer_css () {
     if(isset($_GET['preview_id']) and isset($_GET['writer']) ){
         wp_register_style(
             'proofreading',
-            plugins_url('css/proofreading.css', __FILE__),
+            plugins_url('css/raitaa.css', __FILE__),
             array(),
             1.0,
             'all'
@@ -486,7 +484,7 @@ function writer_css () {
 //※条件を絞らないとフックされる機会が多すぎるのでは無いかと考えたため。
 if( isset($_GET['writer']) ){
     add_action('wp_enqueue_scripts', 'writer_css');
-    add_filter('the_content','writing_do_checker');
+    add_filter('the_content','raitaa_do_checker');
 }
 
 
@@ -527,7 +525,7 @@ function writer_add_button() {
 }
 
 function add_book_fields() {
-    add_meta_box( 'book_setting', '本の情報', 'insert_book_fields', 'post', 'normal');
+    add_meta_box( 'book_setting', 'キーワード', 'insert_book_fields', 'post', 'normal');
 }
 
 function insert_book_fields() {
