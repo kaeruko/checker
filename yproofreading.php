@@ -8,165 +8,9 @@ Version: 1.0.1
 Author URI:http://mobamen.info
 */
 
-//2次元配列の2次元目の配列の値でソートをする関数
-function yproofreading_sortArrayByKey( &$array, $sortKey, $sortType = SORT_ASC ) {
-    $tmpArray = array();
-    foreach ( $array as $key => $row ) {
-        $tmpArray[$key] = $row[$sortKey];
-    }
-    array_multisort( $tmpArray, $sortType, $array );
-    unset( $tmpArray );
-}
-
-//UTF-8のマルチバイト文字列を1文字ずつ分解する関数
-function yproofreading_mb_str_split($str, $split_len = 1) {
-    mb_internal_encoding('UTF-8');
-    mb_regex_encoding('UTF-8');
-    if ($split_len <= 0) {
-        $split_len = 1;
-    }
-    $strlen = mb_strlen($str, 'UTF-8');
-    $ret    = array();
-    for ($i = 0; $i < $strlen; $i += $split_len) {
-        $ret[ ] = mb_substr($str, $i, $split_len);
-    }
-    return $ret;
-}
-
-/*
-* Yahoo API 設定画面
-* ※無名関数を排除するために読みづらい記述になってしまっているので修正を検討したい。
-*/
-function yproofreading_print_setting_guide_link () {
-    echo '<a href="http://mobamen.info/wordpress_proofreading#Japanese_Proofreading_Preview-3" target="_blank">設定方法の詳細はこちらから</a>';
-}
-function yproofreading_print_appid_input_box () {
-    echo '<input name="yahoo_appid" id="yahoo_appid" type="text" class="code" value="' . esc_attr(get_option('yahoo_appid')) . '" /></br>';
-}
-function yproofreading_print_nofilter_desc () {
-    echo '<p>文章校正にて<u>指摘対象外</u>とするものにチェックを入れて下さい。</p>';
-    //横着なやり方だが、BODY内でcssを指定する。
-    echo '<style>.form-table{width: 70%;}.form-table th {padding: 0px 0;width: 100px;}.form-table td {width: 1px;white-space: nowrap;margin-bottom: 0;padding: 0 0;}</style>';
-}
-function yproofreading_print_nofilter_chek_box ($filter_num) {
-    $yahoo_filters = array(
-        '<b>二重否定</b></td><td>例：<i>聞かなくはない</i>' ,
-        '<b>助詞不足の可能性あり</b></td><td>例：<i>学校行く</i>' ,
-        '<b>冗長表現</b></td><td>例：<i>ことができます</i>' ,
-        '<b>略語</b></td><td>例：<i>ADSL→非対称デジタル加入者線(ADSL)</i>'
-    );
-    
-    $option_id = 'yahoo_nofilter' . $filter_num ;
-    echo '<input type="checkbox" id="' . $option_id . '" name="' . $option_id . '"';
-    checked(get_option($option_id), 1);
-    echo ' value="1" />' . $yahoo_filters[$filter_num -1 ] . '';
-}
-function yproofreading_print_nofilter_chek_box1 () {yproofreading_print_nofilter_chek_box ( 1 );};
-function yproofreading_print_nofilter_chek_box2 () {yproofreading_print_nofilter_chek_box ( 2 );};
-function yproofreading_print_nofilter_chek_box3 () {yproofreading_print_nofilter_chek_box ( 3 );};
-function yproofreading_print_nofilter_chek_box4 () {yproofreading_print_nofilter_chek_box ( 4 );};
-function yproofreading_print_nofilter_chek_box5 () {yproofreading_print_nofilter_chek_box ( 5 );};
-function yproofreading_print_nofilter_chek_box6 () {yproofreading_print_nofilter_chek_box ( 6 );};
-function yproofreading_print_nofilter_chek_box7 () {yproofreading_print_nofilter_chek_box ( 7 );};
-function yproofreading_print_nofilter_chek_box8 () {yproofreading_print_nofilter_chek_box ( 8 );};
-function yproofreading_print_nofilter_chek_box9 () {yproofreading_print_nofilter_chek_box ( 9 );};
-function yproofreading_print_nofilter_chek_box10 () {yproofreading_print_nofilter_chek_box ( 10 );};
-function yproofreading_print_nofilter_chek_box11 () {yproofreading_print_nofilter_chek_box ( 11 );};
-function yproofreading_print_nofilter_chek_box12 () {yproofreading_print_nofilter_chek_box ( 12 );};
-function yproofreading_print_nofilter_chek_box13 () {yproofreading_print_nofilter_chek_box ( 13 );};
-function yproofreading_print_nofilter_chek_box14 () {yproofreading_print_nofilter_chek_box ( 14 );};
-function yproofreading_print_nofilter_chek_box15 () {yproofreading_print_nofilter_chek_box ( 15 );};
-function yproofreading_print_nofilter_chek_box16 () {yproofreading_print_nofilter_chek_box ( 16 );};
-function yproofreading_print_nofilter_chek_box17 () {yproofreading_print_nofilter_chek_box ( 17 );};
-function yproofreading_register_settings (){
-    //Yahoo API App IDの設定用
-    add_settings_section(
-        'yahoo_api_setting_section',
-        'Yahoo API 設定',
-        'yproofreading_print_setting_guide_link',
-        'yproofreading'
-    );
-    add_settings_field(
-        "yahoo_appid",
-        "Yahoo API ID",
-        'yproofreading_print_appid_input_box',
-        'yproofreading',
-        'yahoo_api_setting_section'
-    );
-    register_setting('yproofreading_group', 'yahoo_appid', 'wp_filter_nohtml_kses');
-    //除外用フィルター用
-    add_settings_section(
-        'yahoo_nofilter_setting_section',
-        '指摘除外設定',
-        'yproofreading_print_nofilter_desc',
-        'yproofreading'
-    );
-    
-    for ($filter_num = 1 ; $filter_num <= 17 ; $filter_num++){
-        $option_id = 'yahoo_nofilter' . $filter_num ;
-        add_settings_field(
-           $option_id,
-           "",
-           'yproofreading_print_nofilter_chek_box' . $filter_num,
-           'yproofreading',
-           'yahoo_nofilter_setting_section'
-        );
-        
-        register_setting('yproofreading_group', $option_id);
-    }
-}
-add_action('admin_init', 'yproofreading_register_settings');
-
-/*
-* 設定画面にYahoo API 設定画面を追加
-* ※マルチサイト対応すべきか検討したい。
-* ※無名関数を排除するために読みづらい記述になってしまっているので修正を検討したい。
-*/
-function yproofreading_print_options_form () {
-    if (!current_user_can('manage_options')) {
-        wp_die(__('You do not have sufficient permissions to access this page.'));
-    }
-    ?>
-    <div class="wrap">
-        <form action="options.php" method="post">
-            <?php settings_fields('yproofreading_group'); ?>
-            <?php do_settings_sections('yproofreading'); ?>
-            <?php submit_button(); ?>
-        </form>
-    </div>
-    <?php
-}
-function yproofreading_register_link_to_setting_page () {
-    add_options_page('校正支援', '校正支援', 'manage_options', 'yproofreading', 'yproofreading_print_options_form' );
-}
-add_action('admin_menu', 'yproofreading_register_link_to_setting_page' );
-
-/*
-*プラグイン一覧に設定画面へのリンクと設定方法解説ページへのリンクを追加する
-* ※無名関数を排除するために読みづらい記述になったので修正を検討したい。
-*/
-function yproofreading_append_custom_links_to_pluginslist( $links ) {
-    array_unshift( $links, '<a href="http://mobamen.info/wordpress_proofreading#Japanese_Proofreading_Preview-3" target="_blank">設定方法</a>');
-    array_unshift( $links, '<a href="options-general.php?page=yproofreading">設定</a>');
-    return $links;
-}
-add_filter('plugin_action_links_' . plugin_basename(__FILE__) ,'yproofreading_append_custom_links_to_pluginslist' );
-
-/*
-* Yahoo APIに渡すnofilter属性を作成する。
-*/
-function yproofreading_build_nofilter() {
-    $nofilter ="";    
-    return $nofilter;
-}
-
-//Yahoo APIに文章校正のリクエストを投げて結果をSimpleXMLElementで返す関数
-function yproofreading_get_kousei_result($sentence) {
-}
-
 
 function writing_do_checker ($content) {
-    if(!isset($_GET['preview_id']) || !isset($_GET['proofreading']) ){
+    if(!isset($_GET['preview_id']) || !isset($_GET['writer']) ){
         return;
     }
 
@@ -264,6 +108,7 @@ function writing_do_checker ($content) {
                 //導入文の文字数が300~350
                 // error_log(print_r("intro_count:{$intro_count}"));
                 if($chapter["number"] === -1 ){
+                    $intro_count -=1;
                     $type = ($intro_count < 300 || $intro_count > 350) ? "warning":"debug";
                     $results["meta"]["intro_count"] = array("type" => $type, "data"=>$intro_count);
 
@@ -285,6 +130,7 @@ function writing_do_checker ($content) {
                 foreach ($norma["kwcount"] as $k => $v) {
                 // error_log(print_r("\n$t[$i] {$k}が{$v}:\n"));
                     if($v < 3){
+                        $type = "warning";
                         $results[$title_line]["warning"]["kwcount"] = $norma["kwcount"];
                     }
                     $tmp .= "\n{$k}:{$v}";
@@ -469,7 +315,7 @@ function writing_do_checker ($content) {
 
             //導入文の文字数をプラス
             if($chapter["number"] === -1){
-                $intro_count += get_len($line);
+                $intro_count += get_len($line)+1;
             }
 
             //テーブルチェック
@@ -622,10 +468,10 @@ function get_len($string) {
 */
 
 
-function yproofreading_enqueue_css () {
+function writer_css () {
     //プレビュー画面かつ「校正情報プレビュー」ボタンから呼ばれた時にのみ処理を実施
     //is_preview()が正常に動作しないケースに遭遇したため、クエリストリングでプレビュー状態かどうか判断しています。
-    if(isset($_GET['preview_id']) and isset($_GET['proofreading']) ){
+    if(isset($_GET['preview_id']) and isset($_GET['writer']) ){
         wp_register_style(
             'proofreading',
             plugins_url('css/proofreading.css', __FILE__),
@@ -638,8 +484,8 @@ function yproofreading_enqueue_css () {
 }
 //クエリストリングより文章構成支援のオンオフを判定し、必用な時のみアクションとフィルターをフックする。
 //※条件を絞らないとフックされる機会が多すぎるのでは無いかと考えたため。
-if( isset($_GET['proofreading']) ){
-    add_action('wp_enqueue_scripts', 'yproofreading_enqueue_css');
+if( isset($_GET['writer']) ){
+    add_action('wp_enqueue_scripts', 'writer_css');
     add_filter('the_content','writing_do_checker');
 }
 
@@ -648,24 +494,8 @@ if( isset($_GET['proofreading']) ){
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /* 校正情報プレビューボタン表示 */
-function yproofreading_add_proofreading_preview_button() {
+function writer_add_button() {
     
     global $post;
     // wp-admin/includes/post.phpよりコードを拝借。
@@ -680,7 +510,7 @@ function yproofreading_add_proofreading_preview_button() {
     }
     //判別用にクリエストリング「proofreading=yes」を追加
     $query_args['preview'] = 'true';
-    $query_args['proofreading'] = 'yes';
+    $query_args['writer'] = 'yes';
     $url = html_entity_decode(esc_url(add_query_arg($query_args, get_permalink($page->ID))));
 ?>
 <script>
@@ -695,13 +525,27 @@ function yproofreading_add_proofreading_preview_button() {
 </script>
 <?php
 }
+
+function add_book_fields() {
+    add_meta_box( 'book_setting', '本の情報', 'insert_book_fields', 'post', 'normal');
+}
+
+function insert_book_fields() {
+    global $post;
+    echo 'キーワード： <input type="text" name="writer_keyword" value="'.get_post_meta($post->ID, 'writer_keyword', true).'" size="50" />書き方：<br /><p class="howto">見出し2-1のキーワード1-見出し2-1のキーワード2-見出し2-1のキーワード3,見出し2-2のキーワード1-見出し2-2のキーワード2-見出し2-2のキーワード3と書いてください<br />
+    例:パフ-洗う-頻度,パフ-洗う-ダイソー,パフ-洗う-石鹸</p>';
+}
+
+function save_book_fields( $post_id ) {
+    if(!empty($_POST['writer_keyword'])){
+        update_post_meta($post_id, 'writer_keyword', $_POST['writer_keyword'] ); //値を保存
+    }else{ //題名未入力の場合
+        delete_post_meta($post_id, 'writer_keyword'); 
+    }
+}
 register_setting( 'weiting_setting', 'weiting_setting', 'sanitize' );
+add_action('save_post', 'save_book_fields');
 
-add_action('admin_init', 'your_function');
-
-function your_function(){
-add_settings_field( 'api_key', 'CCDのAPIキー', 'api_key_callback', 'weiting_setting', 'ccd_setting_section_id' );
-}  
-
-add_action( 'admin_footer-post-new.php', 'yproofreading_add_proofreading_preview_button' );
-add_action( 'admin_footer-post.php', 'yproofreading_add_proofreading_preview_button' );
+add_action( 'admin_footer-post-new.php', 'writer_add_button' );
+add_action( 'admin_footer-post.php', 'writer_add_button' );
+add_action('admin_menu', 'add_book_fields');
