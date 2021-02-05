@@ -2,10 +2,10 @@
 /*
 Plugin Name: raitaa
 Plugin URI: 
-Description: WEBライティングの記事をチェックする
+Description: WEBライティングの記事をチェックします
 Author: よきな
 Version: 1.0.0
-Author URI:http://
+Author URI:
 */
 
 
@@ -18,10 +18,12 @@ function raitaa_do_checker ($content) {
 
     $t = preg_split("/[\n|\r,]+/", $content);
 
-    $chapter["number"] = -1;
-    $chapter["section"] = 0;
-    $chapter["line"][-1] = 0;
-    $chapter["keyword"] = array();
+    $chapter = array(
+        "number" => -1,
+        "section" => 0,
+        "line" => array('-1' => 0),
+        "keyword" => null
+    );
     $norma = array("kwcount"=> array(),"strong"=> 0, "color"=> 0 , "abst_list" => 0);
     $abstract = false;
     $results = array();
@@ -38,18 +40,34 @@ function raitaa_do_checker ($content) {
     $type = ($tmp > 120 || $tmp < 100) ? "warning":"debug";
     $results["meta"]["meta_desc"] = array('type' => $type, 'data' => "{$the_page_meta_description}({$tmp}文字)");
     //メタキーワード
-    $metakw = explode(",", get_post_meta($id, 'the_page_meta_keywords', true));
-    $type = (count($metakw) < 5) ? "warning":"debug";
-    $results["meta"]["metakw"] = array('type' => $type, 'data' => (implode("-", $metakw))."(".(count($metakw)).")" );
+    $metakw = get_post_meta($id, 'the_page_meta_keywords', true);
+    if($metakw){
+        $metakw = explode(",", $metakw);
+        $type = (count($metakw) < 5) ? "warning":"debug";
+        $results["meta"]["metakw"] = array('type' => $type, 'data' => (implode("-", $metakw))."(".(count($metakw)).")" );
+
+    }
     //メタタグ
-    $tags = array_map(function($tag) { return $tag->name; },get_the_tags());
+    $tags = get_the_tags();
+    if($tags){
+        $tags = array_map(function($tag) { return $tag->name; },$tags);
+    }else{
+        $tags = array();
+    }
     $type = (count($tags) !== 3) ? "warning":"debug";
     $results["meta"]["tag"] = array('type' => $type, 'data' => implode("-", $tags) . "(". (count($tags)).")");
     //カテゴリー
     $category = array_map(function($tag) { return $tag->name; },get_the_category());
     $type = (count($category) !== 1) ? "warning":"debug";
     $results["meta"]["category"] = array('type' => $type, 'data' =>(implode("-", $category)));
-
+    //パーマリンク
+    $pm = ( get_post_field( 'post_name', get_post() ));
+    $results["meta"]["post_name"] = array('type' => "debug", 'data' => $pm);
+    $eyecatch = get_singular_eyecatch_image_url();
+    $e = explode("/", $eyecatch);
+    $e = $e[count($e)-1];
+    $type = !preg_match("/{$pm}/", $e, $m)  ? "warning":"debug";
+    $results["meta"]["eyecatch"] = array('type' => $type, 'data' => $e);
 
     $n = 0;
     $intro_count = 0;
@@ -91,7 +109,8 @@ function raitaa_do_checker ($content) {
             }
 
             if($t[$i-1] !== "&nbsp;"){
-                $results[$i]["warning"]["no_blank"] = $line;
+// var_dump(substr($line, 0,5));
+                $results[$i]["warning"]["no_blank"] = substr($line, 0,5);
             }
 
             if(@$matches[1] === "<h2>" || $tcount == ($i+1)){
@@ -125,23 +144,29 @@ function raitaa_do_checker ($content) {
 
                 // error_log(print_r("chap:{$chapter['number']} n:{$n}"));
                 //章終わり。kwチェック
-                $tmp = $type = "";
+                $type = "debug";
+                $tmp = '';
                 foreach ($norma["kwcount"] as $k => $v) {
                 // error_log(print_r("\n$t[$i] {$k}が{$v}:\n"));
                     if($v < 3){
                         $type = "warning";
-                        $results[$title_line]["warning"]["kwcount"] = $norma["kwcount"];
                     }
                     $tmp .= "\n{$k}:{$v}";
                 }
+                if($chapter["number"] === -1){
+                    $results["meta"]["kwcheck"] = array("type" => $type, "data"=> "導入文:{$tmp}");
+                }else{
+                    $results[$title_line]["warning"]["kwcount"] = $tmp;
+                    $results[$title_line]["warning"]["kwcount"] .= ($type == "warning")? "△":"\n(すべて○)";
+                }
+
+
                 $type = (count($norma["kwcount"]) !== 3) ? "warning":"debug";
 
                 if($chapter["number"] === -1){
-                    $results["meta"]["kw0"] = array("type" => $type, "data"=> count($norma["kwcount"]));
-                    $results["meta"]["kwcheck"] = array("type" => $type, "data"=> "導入文:{$tmp}");
+                    $results["meta"]["kwmissing"] = array("type" => $type, "data"=> count($norma["kwcount"]));
                 }else{
-                    $results[$title_line][$type]["kw0"] = count($norma["kwcount"]);
-                    $results[$title_line]["warning"]["kwcheck"] = $tmp;
+                    $results[$title_line][$type]["kwmissing"] = count($norma["kwcount"]);
                 }
                 $chapter["section"] = 0;
                 $chapter["number"]++;
@@ -158,7 +183,7 @@ function raitaa_do_checker ($content) {
                 //直前に空行2行ある
                 if($t[$i-2] !== "&nbsp;"){
                 // error_log(print_r("\n{$t[$i-1]}\n{$t[$i-2]}\n"));
-                    $results[$title_line]["warning"]["no_blank"] = $t[$i-2];
+                    $results[$i]["warning"]["no_blank"] =$t[$i-2];
                 }
 
 
@@ -204,7 +229,7 @@ function raitaa_do_checker ($content) {
                         $matches[0][2] !== $chapter["keyword"][$chapter["number"]][2] 
 
                     ){
-                        $results[$i]["warning"]["keyword"] = implode($chapter["keyword"][$chapter["number"]],",")."が順番通りに入っていません";
+                        $results[$i]["warning"]["keyword"] = "指定キーワードが順番通りに入っていません";
                     }
                 }
                 //見出し2のキーワードの間に記号!,?,♪が入ってない
@@ -220,7 +245,14 @@ function raitaa_do_checker ($content) {
         }else{
             //空行でもない空白の場合(divタグなど)
             if($line == ""){
+                if($chapter["number"] === -1){
+                    $intro_count += 0.5;
+                }
                 continue;
+            }
+            //導入文の文字数をプラス
+            if($chapter["number"] === -1){
+                $intro_count += get_len($line)+1;
             }
             //リストタグの場合は字数や文末をチェックしない
             if(!preg_match("/<li>|<\/li>/u", $t[$i], $matches)){
@@ -267,18 +299,20 @@ function raitaa_do_checker ($content) {
             if(preg_match("/[!|?]/u", $line, $matches)){
                 $results[$i]["warning"]["hankaku_kigo"] = $matches[0];
             }
+            if(isset($chapter["keyword"][$n])){
+                if(preg_match_all("/({$chapter["keyword"][$n][0]})|({$chapter["keyword"][$n][1]})|({$chapter["keyword"][$n][2]})/u", $line, $matches)){
+    // var_dump($chapter["keyword"][$n]);
+                    foreach ($matches[0] as $k => $v) {
+                        // error_log(print_r($v));
+                        $norma["kwcount"][$v] += 1;
+                        $t[$i] = preg_replace("/{$v}/","<span class='proofreading-item color".(array_search($v, $chapter["keyword"][$n])+1)."'
+                            title=". $norma["kwcount"][$v]. "回
+                            '>{$v}</span>", $t[$i]);
+                    }
+                    // error_log(print_r("{$n} {$t[$i]} "));
+                    // error_log(print_r($matches[0]));
+            }
 
-            if(preg_match_all("/({$chapter["keyword"][$n][0]})|({$chapter["keyword"][$n][1]})|({$chapter["keyword"][$n][2]})/u", $line, $matches)){
-
-                foreach ($matches[0] as $k => $v) {
-                    // error_log(print_r($v));
-                    @$norma["kwcount"][$v] += 1;
-                    $t[$i] = preg_replace("/{$v}/","<span class='proofreading-item color".(array_search($v, $chapter["keyword"][$n])+1)."'
-                        title=". $norma["kwcount"][$v]. "回
-                        '>{$v}</span>", $t[$i]);
-                }
-                // error_log(print_r("{$n} {$t[$i]} "));
-                // error_log(print_r($matches[0]));
             }
             if(preg_match("/<strong>/u", $t[$i], $matches)){
                 //まとめの場合は警告
@@ -312,10 +346,6 @@ function raitaa_do_checker ($content) {
 
             }
 
-            //導入文の文字数をプラス
-            if($chapter["number"] === -1){
-                $intro_count += get_len($line)+1;
-            }
 
             //テーブルチェック
 
@@ -329,7 +359,7 @@ function raitaa_do_checker ($content) {
         //皆さんはダメ
         //autokanaで。中身を見れば英字になってるところあるはず画像名生成　zuでもduでもでるのか
         //2重装飾は控える
-        //word校正はしましたか？、コピペチェックは%でしたか？(リンクを付ける)メタディスクリプションの文字数115~120、メタキーワードが5,6、メタキーワードのうち3はキーワード、文字数は何文字でした。大丈夫ですか？添削依頼表をセットし、添削が終わったら黄色を塗ろう(依頼表へのリンクGoogleスプレッドシートAPIでできるかも)。リビジョンを更新しましょう、編集画面を閉じましょう
+        //word校正はしましたか？、コピペチェックは%でしたか？添削依頼表をセットし、添削が終わったら黄色を塗ろう(依頼表へのリンクGoogleスプレッドシートAPIでできるかも)。リビジョンを更新しましょう、編集画面を閉じましょう
 
     }
     //まとめのリストタグが4000文字を超える場合6~8
@@ -392,23 +422,26 @@ function warning_desc($warning, $val) {
     $val = strip_tags($val);
     switch ($warning) {
         case "no_blank":
-            $result = sprintf("改行がありません %s", $val);
+            $result = sprintf("直前に改行がありません△", $val);
+            break;
+        case "h2_len":
+            $result = sprintf("見出しの文字数(15~23) %s", $val);
             break;
         case "bad_blank":
-            $result = sprintf("※見出しや吹き出しの前以外で改行が入っています 【%s】", $val);
+            $result = sprintf("見出しや吹き出しの前以外で改行が入っています△ 【%s】", $val);
             break;
         case "hankaku_kigo":
-            $result = sprintf("※見出し以外で半角の!や?が使われています 【%s】", $val);
+            $result = sprintf("見出し以外で半角の!や?が使われています△ 【%s】", $val);
             break;
         
         case "ending":
-            $result = sprintf("※？ ！ 。 ♪ ) 以外の文末です 【%s】", $val);
+            $result = sprintf("△？ ！ 。 ♪ ) 以外の文末です 【%s】△", $val);
             break;
         case "tooshort":
-            $result = sprintf("※スマホで見ると1行です 21~84文字推奨【現在%s文字】", $val);
+            $result = sprintf("スマホで見ると1行です 21~84文字推奨【現在%s文字】△", $val);
             break;
         case "toolong":
-            $result = sprintf("※スマホで見ると4行以上です 21~84文字推奨【現在%s文字】", $val);
+            $result = sprintf("スマホで見ると4行以上です 21~84文字推奨【現在%s文字】△", $val);
             break;
         case "kwcount":
             $result = sprintf("キーワード埋め込み %s", $val);
@@ -442,6 +475,15 @@ function warning_desc($warning, $val) {
         case "abst_list":
             $result = sprintf("まとめの箇条書き(4000文字以上の場合は6~8) </span><br />%s", $val);
             break;
+        case "post_name":
+            $result = sprintf("パーマリンク(指定キーワードをそのままローマ字に) </span><br />%s", $val);
+            break;
+        case "eyecatch":
+            $result = sprintf("アイキャッチ </span><br />%s", $val);
+            break;
+        case "kwmissing":
+            $result = sprintf("埋め込まれたキーワードの種類 </span><br />%s種類", $val);
+            break;
         default:
             $result = sprintf("{$warning} %s", $val);
             break;
@@ -450,15 +492,8 @@ function warning_desc($warning, $val) {
 }
 
 function get_len($string) {
-    return floor(strlen($string)/3) + (strlen($string) % 3 * 0.5);
+    return mb_strwidth($string,'UTF-8')/2;
 }
-
-
-
-
-
-
-
 
 
 /*
@@ -513,7 +548,7 @@ function writer_add_button() {
 ?>
 <script>
     (function($) {
-        $('#minor-publishing-actions').append('<div class="proofreading-preview"><a id="proofreading-preview" class="button">チェッカー付きプレビュー</a></div>');
+        $('#minor-publishing-actions').append('<div class="proofreading-preview"><a id="proofreading-preview" class="button">仮添削する</a></div>');
         $(document).on('click', '#proofreading-preview', function(e) {
             e.preventDefault();
             PreviewURL = '<?php echo $url ?>';
@@ -524,17 +559,17 @@ function writer_add_button() {
 <?php
 }
 
-function add_book_fields() {
-    add_meta_box( 'book_setting', 'キーワード', 'insert_book_fields', 'post', 'normal');
+function add_kw_fields() {
+    add_meta_box( 'book_setting', 'キーワード', 'insert_kw_fields', 'post', 'normal');
 }
 
-function insert_book_fields() {
+function insert_kw_fields() {
     global $post;
     echo 'キーワード： <input type="text" name="writer_keyword" value="'.get_post_meta($post->ID, 'writer_keyword', true).'" size="50" />書き方：<br /><p class="howto">見出し2-1のキーワード1-見出し2-1のキーワード2-見出し2-1のキーワード3,見出し2-2のキーワード1-見出し2-2のキーワード2-見出し2-2のキーワード3と書いてください<br />
     例:パフ-洗う-頻度,パフ-洗う-ダイソー,パフ-洗う-石鹸</p>';
 }
 
-function save_book_fields( $post_id ) {
+function save_kw_fields( $post_id ) {
     if(!empty($_POST['writer_keyword'])){
         update_post_meta($post_id, 'writer_keyword', $_POST['writer_keyword'] ); //値を保存
     }else{ //題名未入力の場合
@@ -542,8 +577,8 @@ function save_book_fields( $post_id ) {
     }
 }
 register_setting( 'weiting_setting', 'weiting_setting', 'sanitize' );
-add_action('save_post', 'save_book_fields');
 
 add_action( 'admin_footer-post-new.php', 'writer_add_button' );
 add_action( 'admin_footer-post.php', 'writer_add_button' );
-add_action('admin_menu', 'add_book_fields');
+add_action('admin_menu', 'add_kw_fields');
+add_action('save_post', 'save_kw_fields');
