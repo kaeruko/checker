@@ -38,13 +38,13 @@ function raitaa_do_checker ($content) {
     $the_page_meta_description = (get_post_meta($id, 'the_page_meta_description', true));
     $tmp = get_len($the_page_meta_description);
     $type = ($tmp > 120 || $tmp < 100) ? "warning":"debug";
-    $results["meta"]["meta_desc"] = array('type' => $type, 'data' => "{$the_page_meta_description}({$tmp}文字)");
+    $results[-1]["meta_desc"] = array('type' => $type, 'data' => "{$the_page_meta_description}({$tmp}文字)");
     //メタキーワード
     $metakw = get_post_meta($id, 'the_page_meta_keywords', true);
     if($metakw){
         $metakw = explode(",", $metakw);
         $type = (count($metakw) < 5) ? "warning":"debug";
-        $results["meta"]["metakw"] = array('type' => $type, 'data' => (implode("-", $metakw))."(".(count($metakw)).")" );
+        $results[-1]["metakw"] = array('type' => $type, 'data' => (implode("-", $metakw))."(".(count($metakw)).")" );
 
     }
     //メタタグ
@@ -55,30 +55,32 @@ function raitaa_do_checker ($content) {
         $tags = array();
     }
     $type = (count($tags) !== 3) ? "warning":"debug";
-    $results["meta"]["tag"] = array('type' => $type, 'data' => implode("-", $tags) . "(". (count($tags)).")");
+    $results[-1]["tag"] = array('type' => $type, 'data' => implode("-", $tags) . "(". (count($tags)).")");
     //カテゴリー
     $category = array_map(function($tag) { return $tag->name; },get_the_category());
     $type = (count($category) !== 1) ? "warning":"debug";
-    $results["meta"]["category"] = array('type' => $type, 'data' =>(implode("-", $category)));
+    $results[-1]["category"] = array('type' => $type, 'data' =>(implode("-", $category)));
     //パーマリンク
     $pm = ( get_post_field( 'post_name', get_post() ));
-    $results["meta"]["post_name"] = array('type' => "debug", 'data' => $pm);
+    $type = (!$pm) ? "warning":"debug";
+    $results[-1]["post_name"] = array('type' => $type, 'data' => $pm);
     $eyecatch = get_singular_eyecatch_image_url();
     $e = explode("/", $eyecatch);
     $e = $e[count($e)-1];
-    $type = !preg_match("/{$pm}/", $e, $m)  ? "warning":"debug";
-    $results["meta"]["eyecatch"] = array('type' => $type, 'data' => $e);
+    $type = (!preg_match("/{$pm}/", $e, $m)|| !$pm)  ? "warning":"debug";
+    $results[-1]["eyecatch"] = array('type' => $type, 'data' => $e);
 
     $n = 0;
     $intro_count = 0;
     $tcount = count($t);
+    $title_line = -1;
     for ($i=0; $i < count($t); $i++) {
         $line = strip_tags($t[$i]);
         //空行の場合、下にhrか空行があるかチェック
         if(preg_match("/&nbsp;/u", $t[$i], $matches)){
             //これだと3空行があってもスルーされるな
             if(!preg_match("/<h2>|<h3>|speech-balloon|&nbsp;/", $t[$i+1], $matches)){
-                $results[$i]["warning"]["bad_blank"] = $t[$i+1];
+                $results[$i]["bad_blank"] = array("type"=> "warning", "data" =>$t[$i+1]);
             }
             continue;
         }
@@ -87,12 +89,12 @@ function raitaa_do_checker ($content) {
             //タグ内全部見るべきだろうけど下だけ
             if($t[$i+1] !=="<ul>"){
                 // error_log(print_r($t[$i+1]));
-                $results[$i]["warning"]["no_list"] = $t[$i];
+                $results[$i]["no_list"] = array("type"=> "warning", "data" =>$t[$i]);
             }
         }
         //数字は全て半角
         if(preg_match("/[０-９]/u", $t[$i], $matches)){
-            $results[$i]["warning"]["zenkaku_num"] = $t[$i];
+            $results[$i]["zenkaku_num"] = array("type"=> "warning", "data" =>$t[$i]);
         }
         // 見出し<h2><h3>か最後まできたらキーワードチェック
         if(preg_match("/(<h2>).*<\/h2>|(<h3>).*<\/h3>/", $t[$i], $matches)
@@ -101,24 +103,19 @@ function raitaa_do_checker ($content) {
             $line = strip_tags($t[$i]);
             //見出しに、はつけない
             if(preg_match("/、/u", $line, $_m)){
-                $results[$i]["warning"]["kanma"] = $_m[0];
+                $results[$i]["kanma"] = array("type"=> "warning", "data" =>$_m[0]);
             }
             //見出しの?、!が半角か
             if(preg_match("/？|！|♪/u", $line, $_m)){
-                $results[$i]["warning"]["zenkaku_kigo"] = $_m[0];
+                $results[$i]["zenkaku_kigo"] = array("type"=> "warning", "data" =>$_m[0]);
             }
 
             if($t[$i-1] !== "&nbsp;"){
 // var_dump(substr($line, 0,5));
-                $results[$i]["warning"]["no_blank"] = substr($line, 0,5);
+                $results[$i]["no_blank"] = array("type"=> "warning", "data" =>substr($line, 0,5));
             }
 
             if(@$matches[1] === "<h2>" || $tcount == ($i+1)){
-                //見出し2の添字チェック
-                $chapter["line"][$chapter["number"]+1] = $i;
-                // 前章が終わった。前節の数チェック(見出し3は2つ以上入れる)
-                $title_line = $chapter["line"][$chapter["number"]];
-
                 if($chapter["section"] === 1){
                     $results[$title_line]["warning"]["section"] = $chapter["section"];
                 // error_log(print_r("\n{$t[$title_line]}\n{$t[$i-2]}\n"));
@@ -128,23 +125,23 @@ function raitaa_do_checker ($content) {
                 if($chapter["number"] === -1 ){
                     $intro_count -=1;
                     $type = ($intro_count < 300 || $intro_count > 350) ? "warning":"debug";
-                    $results["meta"]["intro_count"] = array("type" => $type, "data"=>$intro_count);
+                    $results[-1]["intro_count"] = array("type" => $type, "data"=>$intro_count);
 
                 }
 
-                if(!$norma["color"] === 0  ){
+                if($norma["color"] === 0  ){
                     // error_log(print_r("{$t[$title_line]}\n"));
-                    $results[$title_line]["warning"]["notag"] = $norma["color"];
+                    $results[$title_line]["nocolor"] = array("type" =>"warning", "data" => $norma["color"]);
                 }
-                if(!$norma["strong"] === 0  ){
+
+                if($norma["strong"] === 0  ){
                     // error_log(print_r("{$t[$title_line]}\n"));
-                    $results[$title_line]["warning"]["notag"] = $norma["strong"];
+                    $results[$title_line]["strong"] = array("type" =>"warning", "data" => $norma["strong"]);
                 }
 
 
                 // error_log(print_r("chap:{$chapter['number']} n:{$n}"));
                 //章終わり。kwチェック
-                $type = "debug";
                 $tmp = '';
                 foreach ($norma["kwcount"] as $k => $v) {
                 // error_log(print_r("\n$t[$i] {$k}が{$v}:\n"));
@@ -154,22 +151,37 @@ function raitaa_do_checker ($content) {
                     $tmp .= "\n{$k}:{$v}";
                 }
                 if($chapter["number"] === -1){
-                    $results["meta"]["kwcheck"] = array("type" => $type, "data"=> "導入文:{$tmp}");
+                    $chap_no = "導入文";
+                }elseif ($abstract) {
+                    $chap_no = "<br />まとめ";
                 }else{
-                    $results[$title_line]["warning"]["kwcount"] = $tmp;
-                    $results[$title_line]["warning"]["kwcount"] .= ($type == "warning")? "△":"\n(すべて○)";
+                    $chap_no = "<br />見出し2-".($chapter['number']+1);
                 }
+                //1こもない
+                $type = "debug";
+                if(!$norma["kwcount"] ){
+                    $type = "warning";                    
+                }
+                if($results[$title_line]["kwcheck"]["type"] !== "warning"){
+                    $results[$title_line]["kwcheck"]["type"] = $type;
+                }
+                //ここをいずれ$iに
+                $results[$title_line]["kwcheck"]["data"] .= "{$chap_no}:{$tmp}";
+                $results[$title_line]["kwcheck"]["data"] .= ($type === "warning")? "△":"\n○";
 
 
                 $type = (count($norma["kwcount"]) !== 3) ? "warning":"debug";
 
-                if($chapter["number"] === -1){
-                    $results["meta"]["kwmissing"] = array("type" => $type, "data"=> count($norma["kwcount"]));
-                }else{
-                    $results[$title_line][$type]["kwmissing"] = count($norma["kwcount"]);
-                }
+                $results[$title_line]["kwmissing"] = array("type" => $type, "data"=> count($norma["kwcount"]));
+                //見出し3の数
                 $chapter["section"] = 0;
                 $chapter["number"]++;
+                //見出し2の添字チェック
+                $chapter["line"][$chapter["number"]] = $i;
+                // 前章が終わった。前節の数チェック(見出し3は2つ以上入れる)
+                $title_line = $chapter["line"][$chapter["number"]];
+
+
                 $n = $chapter["number"];
                 if($chapter["number"] < 0){
                     $n = 0;
@@ -183,7 +195,7 @@ function raitaa_do_checker ($content) {
                 //直前に空行2行ある
                 if($t[$i-2] !== "&nbsp;"){
                 // error_log(print_r("\n{$t[$i-1]}\n{$t[$i-2]}\n"));
-                    $results[$i]["warning"]["no_blank"] =$t[$i-2];
+                    $results[$i]["no_blank"] = array("type"=> "warning", "data" =>$t[$i-2]);
                 }
 
 
@@ -196,29 +208,29 @@ function raitaa_do_checker ($content) {
                 if(preg_match("/src=.+?\"(.*?) \"?/x", $t[$i+1], $matches)){
                     //画像のサイズが横300形式がjpg
                     if(substr($matches[0], -4,3) !== "jpg" ){
-                        $results[$i]["warning"]["img_ext"] = substr($matches[1], 3);
+                        $results[$i]["img_ext"] = array("type"=> "warning", "data" =>substr($matches[1], 3));
                     }
 
                     //横サイズが300
                     if(preg_match("/width\=\"([0-9]+) /x", $t[$i+1], $matches)){
                         if($matches[1] !== "300"){
-                            $results[$i]["warning"]["img_width"] = $matches[1];
+                            $results[$i]["img_width"] = array("type"=> "warning", "data" =>$matches[1]);
                         }
                     }
 
                 }else{
-                    $results[$i]["warning"]["no_img"] = $line;
+                    $results[$i]["no_img"] = array("type"=> "warning", "data" =>$line);
                 }
 
-                // $results[$i]["contents"] = $line;    //ここは共通
+                // $results[$i] = $line;    //array("type"=> "warning", "data" =>ここは共通
                 $len = get_len($line);
                 //見出し2の文字数が17~23
                 if($len < 15){
-                    $results[$i]["warning"]["len_min"] = "{$len}文字 △";
+                    $results[$i]["len_min"] = array("type"=> "warning", "data" =>"{$len}文字 △");
                 }elseif($len > 23){
-                    $results[$i]["warning"]["len_max"] = "{$len}文字 △";
+                    $results[$i]["len_max"] = array("type"=> "warning", "data" =>"{$len}文字 △");
                 }else{
-                    $results[$i]["warning"]["h2_len"] = "{$len}文字 ○";
+                    $results[$i]["h2_len"] = array("type"=> "warning", "data" =>"{$len}文字 ○");
                 }
 
                 //指定キーワードが順番どおりに入る
@@ -229,13 +241,13 @@ function raitaa_do_checker ($content) {
                         $matches[0][2] !== $chapter["keyword"][$chapter["number"]][2] 
 
                     ){
-                        $results[$i]["warning"]["keyword"] = "指定キーワードが順番通りに入っていません";
+                        $results[$i]["keyword"] = array("type"=> "warning", "data" =>"指定キーワードが順番通りに入っていません");
                     }
                 }
                 //見出し2のキーワードの間に記号!,?,♪が入ってない
                 if(preg_match_all("/{$chapter["keyword"][$n][0]}(.*){$chapter["keyword"][$n][1]}(.*){$chapter["keyword"][$n][2]}/u", $line, $m)){
                     if(preg_match("/!|\?|♪/u", $m[1][0].$m[2][0], $matches)){
-                        $results[$i]["warning"]["between"] = implode($matches, "");
+                        $results[$i]["between"] = array("type"=> "warning", "data" =>implode($matches, ""));
                     }
                 }
             }elseif($matches[2] == "<h3>"){
@@ -261,16 +273,16 @@ function raitaa_do_checker ($content) {
                     //下の行がリストタグ
 
                     preg_match("/.$/u", $line, $matches);
-                    $results[$i]["warning"]["ending"] = $matches[0];
+                    $results[$i]["ending"] = array("type"=> "warning", "data" =>$matches[0]);
                 }
                 //改行までの文字列がスマホで2行~4行に収まる
                 $l = get_len($line);
                 // error_log(print_r("get_len:{$line}\n"));
                 if($l < 21){
-                    $results[$i]["warning"]["tooshort"] = $l;
+                    $results[$i]["tooshort"] = array("type"=> "warning", "data" =>$l);
                     //下の行がリストタグ
                 }elseif($l > 84){
-                    $results[$i]["warning"]["toolong"] = $l;
+                    $results[$i]["toolong"] = array("type"=> "warning", "data" =>$l);
                 }
             }
             //まとめの箇条書きカウント
@@ -288,39 +300,24 @@ function raitaa_do_checker ($content) {
 
             //shift+enter
             if(preg_match("/^<div>.*<\/div>$/u", $t[$i], $matches)){
-                $results[$i]["warning"]["enter"] = $matches;
+                $results[$i]["enter"] = array("type"=> "warning", "data" =>$matches);
             }
             //文頭にですが
             if(preg_match("/^ですが/u", $line, $matches)){
-                $results[$i]["warning"]["desuga"] = $matches[0];
+                $results[$i]["desuga"] = array("type"=> "warning", "data" =>$matches[0]);
             }
 
             //文中で!?は使わない
             if(preg_match("/[!|?]/u", $line, $matches)){
-                $results[$i]["warning"]["hankaku_kigo"] = $matches[0];
-            }
-            if(isset($chapter["keyword"][$n])){
-                if(preg_match_all("/({$chapter["keyword"][$n][0]})|({$chapter["keyword"][$n][1]})|({$chapter["keyword"][$n][2]})/u", $line, $matches)){
-    // var_dump($chapter["keyword"][$n]);
-                    foreach ($matches[0] as $k => $v) {
-                        // error_log(print_r($v));
-                        $norma["kwcount"][$v] += 1;
-                        $t[$i] = preg_replace("/{$v}/","<span class='proofreading-item color".(array_search($v, $chapter["keyword"][$n])+1)."'
-                            title=". $norma["kwcount"][$v]. "回
-                            '>{$v}</span>", $t[$i]);
-                    }
-                    // error_log(print_r("{$n} {$t[$i]} "));
-                    // error_log(print_r($matches[0]));
-            }
-
+                $results[$i]["hankaku_kigo"] = array("type"=> "warning", "data" =>$matches[0]);
             }
             if(preg_match("/<strong>/u", $t[$i], $matches)){
                 //まとめの場合は警告
                 if($abstract){
-                    $results[$i]["warning"]["abst_tag"] = $matches[1];
+                    $results[$i]["abst_tag"] = array("type"=> "warning", "data" =>$matches[1]);
                 //すでにある場合は警告
                 }elseif($norma["strong"] > 0){
-                    $results[$i]["warning"]["too_strong"] = $matches[1];
+                    $results[$i]["too_strong"] = array("type"=> "warning", "data" =>$matches[1]);
                 }else{
                     if(preg_match("/^<strong>.*<\/strong>$/u", $t[$i], $matches)){
                         //Bタグとcolorタグは一行に修飾。
@@ -334,7 +331,7 @@ function raitaa_do_checker ($content) {
 
                 //まとめの場合は警告
                 if($abstract){
-                    $results[$i]["warning"]["abst_tag"] = $matches[0];
+                    $results[$i]["abst_tag"] = array("type"=> "warning", "data" =>$matches[0]);
                 }else{
                 // if(preg_match("/src=.+?\"(.*?)\\\ /x", $t[$i+1], $matches)){
                     if(preg_match("/^<span style.*<\/span>$/u", $t[$i], $matches)){
@@ -345,6 +342,21 @@ function raitaa_do_checker ($content) {
                 }
 
             }
+            if(isset($chapter["keyword"][$n])){
+                if(preg_match_all("/({$chapter["keyword"][$n][0]})|({$chapter["keyword"][$n][1]})|({$chapter["keyword"][$n][2]})/u", $line, $matches)){
+                    foreach ($matches[0] as $k => $v) {
+                        // error_log(print_r($v));
+                        $norma["kwcount"][$v] += 1;
+                        $t[$i] = preg_replace("/{$v}/","<span class='proofreading-item color".(array_search($v, $chapter["keyword"][$n])+1)."'
+                            title=". $norma["kwcount"][$v]. "回
+                            '>{$v}</span>", $t[$i]);
+                    }
+                    // error_log(print_r("{$n} {$t[$i]} "));
+                    // error_log(print_r($matches[0]));
+                }
+
+            }
+
 
 
             //テーブルチェック
@@ -363,12 +375,13 @@ function raitaa_do_checker ($content) {
 
     }
     //まとめのリストタグが4000文字を超える場合6~8
-    $type = (get_len(strip_tags($content)) > 4000 && $norma["abst_list"] < 6  ) ? "warning":"debug";
-    $results["meta"]["abst_list"] = array('type' => $type, 'data' => $norma["abst_list"]);
+    $type = (get_len(strip_tags($content)) > 4000 
+        && $norma["abst_list"] < 6 ) || ($norma["abst_list"] < 4) ? "warning":"debug";
+    $results[-1]["abst_list"] = array('type' => $type, 'data' => $norma["abst_list"]);
 
     //見出し2はまとめいれて4つ以上
     $type = ($chapter["number"] < 3) ? "warning":"debug";
-    $results["meta"]["chap_no"] = array('type' => $type, 'data' =>$chapter["number"]);
+    $results[-1]["chap_no"] = array('type' => $type, 'data' =>$chapter["number"]);
 
     // $a = get_post_meta_by_id($_GET['preview_id']);
     // $b = get_post_meta($a["meta_id"]);
@@ -378,48 +391,54 @@ function raitaa_do_checker ($content) {
     $len = get_len($tmp[count($tmp)-1]);
     //タイトルが28~32文字
     $type = ($len < 28 || $len > 32) ? "warning":"debug";
-    $results["meta"]["title_len"] = array('type' => $type, 'data' => $tmp[count($tmp)-1]."(".$len."文字)");
+    $results[-1]["title_len"] = array('type' => $type, 'data' => $tmp[count($tmp)-1]."(".$len."文字)");
 
     //ステータスチェック
-    //パーマリンク
-
-    //アイキャッチがある
-    //カテゴリは1つ。とタグの設定
 
     $warning  = "<div class='proofreading-result'>
 <div class='proofreading-summary'>
 <p><span class='proofreading-h2'>サマリー</span></p>";
 
-    foreach ($results["meta"] as $k => $v) {
-        if($v["type"] == "warning"){
-            $warning .="<span class='proofreading warning1'>△";
-        }else{
-            $warning .="<span class='proofreading debug1'>○";
-        }
-        $warning .= warning_desc($k, $v["data"]) ."<br /></span>";
-    }
-    $warning  .= "<p><span class='proofreading-h2'>本文</span></p>";
+    for ($i=-1; $i < count($t)+1; $i++) {
+        $type = "debug";
+        $desc = "";
+        if(isset($results[$i])){
+            if($i === -1){
+                foreach ($results[$i] as $k => $v) {
+                    if($v["type"] == "warning"){
+                        $warning .="<span class='proofreading warning1'>△";
+                    }else{
+                        $warning .="<span class='proofreading debug1'>○";
+                    }
+                    $warning .= warning_desc($k, $v["data"]) ."<br /></span>";
+                }
+                $warning  .= "<p><span class='proofreading-h2'>本文</span></p>";
+            }else{
+                foreach ($results[$i] as $k => $v) {
+if($v["type"] === "warning" ){
+var_dump($k);
 
-    for ($i=0; $i < count($t); $i++) { 
-        if(isset($results[$i]["warning"])){
-            $warning .="<span class='proofreading-item warning1'  title='確認:";
-            foreach ($results[$i]["warning"] as $k => $v) {
-                $warning .= "\n ".strip_tags(warning_desc($k, $v)) ;
+}
+                    if($v["type"] === "warning" || $type === "warning"){
+                        $type = "warning";
+                    }
+                    $desc .= "\n ".strip_tags(warning_desc($k, $v["data"])) ;
+                }
+
+                $warning .="<span class='proofreading-item {$type}1'  title='check:{$desc}'>$t[$i]</span>";
             }
-            $warning .= "'>$t[$i]</span>";
         }else{
-            $warning .= $t[$i];
+            $warning .= $t[$i]."<br />";
         }
-        $warning .= "<br />";
     }
-    $ret .= "タイトルの文字数:{$len}";
-    $ret .= $tmp[count($tmp)-1];
     return $warning ;
 }
 
 
 function warning_desc($warning, $val) {
-    $val = strip_tags($val);
+    if($warning !== "kwcheck" && !is_array($val)){
+        $val = strip_tags($val);
+    }
     switch ($warning) {
         case "no_blank":
             $result = sprintf("直前に改行がありません△", $val);
@@ -501,7 +520,7 @@ function get_len($string) {
 */
 
 
-function writer_css () {
+function raitaa_css () {
     //プレビュー画面かつ「校正情報プレビュー」ボタンから呼ばれた時にのみ処理を実施
     //is_preview()が正常に動作しないケースに遭遇したため、クエリストリングでプレビュー状態かどうか判断しています。
     if(isset($_GET['preview_id']) and isset($_GET['writer']) ){
@@ -518,7 +537,7 @@ function writer_css () {
 //クエリストリングより文章構成支援のオンオフを判定し、必用な時のみアクションとフィルターをフックする。
 //※条件を絞らないとフックされる機会が多すぎるのでは無いかと考えたため。
 if( isset($_GET['writer']) ){
-    add_action('wp_enqueue_scripts', 'writer_css');
+    add_action('wp_enqueue_scripts', 'raitaa_css');
     add_filter('the_content','raitaa_do_checker');
 }
 
@@ -565,12 +584,15 @@ function add_kw_fields() {
 
 function insert_kw_fields() {
     global $post;
-    echo 'キーワード： <input type="text" name="writer_keyword" value="'.get_post_meta($post->ID, 'writer_keyword', true).'" size="50" />書き方：<br /><p class="howto">見出し2-1のキーワード1-見出し2-1のキーワード2-見出し2-1のキーワード3,見出し2-2のキーワード1-見出し2-2のキーワード2-見出し2-2のキーワード3と書いてください<br />
+    echo '指定キーワード： <input type="text" name="writer_keyword" value="'.get_post_meta($post->ID, 'writer_keyword', true).'" size="50" />書き方：<br /><p class="howto">見出し2-1のキーワード1-見出し2-1のキーワード2-見出し2-1のキーワード3,見出し2-2のキーワード1-見出し2-2のキーワード2-見出し2-2のキーワード3と書いてください<br />
     例:パフ-洗う-頻度,パフ-洗う-ダイソー,パフ-洗う-石鹸</p>';
 }
 
 function save_kw_fields( $post_id ) {
-    if(!empty($_POST['writer_keyword'])){
+    if(get_post_meta($post_id, "writer_keyword") == ""){
+        //新しいデータならデータを作成
+        add_post_meta($post_id, "writer_keyword", $_POST['writer_keyword'], true);
+    }elseif(!empty($_POST['writer_keyword'])){
         update_post_meta($post_id, 'writer_keyword', $_POST['writer_keyword'] ); //値を保存
     }else{ //題名未入力の場合
         delete_post_meta($post_id, 'writer_keyword'); 
