@@ -136,13 +136,14 @@ function raitaa_do_checker ($content) {
 
                 if($norma["strong"] === 0  ){
                     // error_log(print_r("{$t[$title_line]}\n"));
-                    $results[$title_line]["strong"] = array("type" =>"warning", "data" => $norma["strong"]);
+                    // $results[$title_line]["no_strong"] = array("type" =>"warning", "data" => $norma["strong"]);
                 }
 
 
                 // error_log(print_r("chap:{$chapter['number']} n:{$n}"));
                 //章終わり。kwチェック
                 $tmp = '';
+                $type = "debug";
                 foreach ($norma["kwcount"] as $k => $v) {
                 // error_log(print_r("\n$t[$i] {$k}が{$v}:\n"));
                     if($v < 3){
@@ -158,16 +159,17 @@ function raitaa_do_checker ($content) {
                     $chap_no = "<br />見出し2-".($chapter['number']+1);
                 }
                 //1こもない
-                $type = "debug";
                 if(!$norma["kwcount"] ){
                     $type = "warning";                    
                 }
                 if($results[$title_line]["kwcheck"]["type"] !== "warning"){
                     $results[$title_line]["kwcheck"]["type"] = $type;
                 }
-                //ここをいずれ$iに
-                $results[$title_line]["kwcheck"]["data"] .= "{$chap_no}:{$tmp}";
+                $results[$title_line]["kwcheck"]["data"] .= "{$tmp}";
                 $results[$title_line]["kwcheck"]["data"] .= ($type === "warning")? "△":"\n○";
+
+                $results[-1]["kwcheck"]["data"] .= "{$chap_no}:{$tmp}";
+                $results[-1]["kwcheck"]["data"] .= ($type === "warning")? "△":"\n○";
 
 
                 $type = (count($norma["kwcount"]) !== 3) ? "warning":"debug";
@@ -230,7 +232,7 @@ function raitaa_do_checker ($content) {
                 }elseif($len > 23){
                     $results[$i]["len_max"] = array("type"=> "warning", "data" =>"{$len}文字 △");
                 }else{
-                    $results[$i]["h2_len"] = array("type"=> "warning", "data" =>"{$len}文字 ○");
+                    $results[$i]["h2_len"] = array("type"=> "debug", "data" =>"{$len}文字 ○");
                 }
 
                 //指定キーワードが順番どおりに入る
@@ -415,17 +417,13 @@ function raitaa_do_checker ($content) {
                 $warning  .= "<p><span class='proofreading-h2'>本文</span></p>";
             }else{
                 foreach ($results[$i] as $k => $v) {
-if($v["type"] === "warning" ){
-var_dump($k);
-
-}
                     if($v["type"] === "warning" || $type === "warning"){
                         $type = "warning";
                     }
                     $desc .= "\n ".strip_tags(warning_desc($k, $v["data"])) ;
                 }
 
-                $warning .="<span class='proofreading-item {$type}1'  title='check:{$desc}'>$t[$i]</span>";
+                $warning .="<span class='proofreading-item {$type}1'  title='check:{$desc}'>$t[$i]</span><br />";
             }
         }else{
             $warning .= $t[$i]."<br />";
