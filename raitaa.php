@@ -149,7 +149,7 @@ function raitaa_do_checker ($content) {
                     if($v < 3){
                         $type = "warning";
                     }
-                    $tmp .= "\n{$k}:{$v}";
+                    $tmp .= "{$k}:{$v}";
                 }
                 if($chapter["number"] === -1){
                     $chap_no = "導入文";
@@ -165,12 +165,13 @@ function raitaa_do_checker ($content) {
                 if($results[$title_line]["kwcheck"]["type"] !== "warning"){
                     $results[$title_line]["kwcheck"]["type"] = $type;
                 }
-                $results[$title_line]["kwcheck"]["data"] .= "{$tmp}";
-                $results[$title_line]["kwcheck"]["data"] .= ($type === "warning")? "△":"\n○";
+                if($title_line === -1){
+                    $results[$title_line]["kwcheck"]["data"] .= "{$chap_no}:{$tmp}";
 
-                $results[-1]["kwcheck"]["data"] .= "{$chap_no}:{$tmp}";
-                $results[-1]["kwcheck"]["data"] .= ($type === "warning")? "△":"\n○";
-
+                }else{
+                    $results[$title_line]["kwcheck"]["data"] .= "{$tmp}";
+                    $results[-1]["kwcheck"]["data"] .= "{$chap_no}:{$tmp}";
+                }
 
                 $type = (count($norma["kwcount"]) !== 3) ? "warning":"debug";
 
@@ -232,7 +233,7 @@ function raitaa_do_checker ($content) {
                 }elseif($len > 23){
                     $results[$i]["len_max"] = array("type"=> "warning", "data" =>"{$len}文字 △");
                 }else{
-                    $results[$i]["h2_len"] = array("type"=> "debug", "data" =>"{$len}文字 ○");
+                    $results[$i]["h2_len"] = array("type"=> "debug", "data" =>"{$len}文字");
                 }
 
                 //指定キーワードが順番どおりに入る
@@ -410,20 +411,23 @@ function raitaa_do_checker ($content) {
                     if($v["type"] == "warning"){
                         $warning .="<span class='proofreading warning1'>△";
                     }else{
-                        $warning .="<span class='proofreading debug1'>○";
+                        $warning .="<span class='proofreading debug1'>🌸";
                     }
                     $warning .= warning_desc($k, $v["data"]) ."<br /></span>";
                 }
                 $warning  .= "<p><span class='proofreading-h2'>本文</span></p>";
             }else{
                 foreach ($results[$i] as $k => $v) {
+                    $desc .= "\n";
                     if($v["type"] === "warning" || $type === "warning"){
                         $type = "warning";
-                    }
-                    $desc .= "\n ".strip_tags(warning_desc($k, $v["data"])) ;
+                        $desc .= "△";    
+                    }else{
+                        $desc .= "🌸";                    }
+                    $desc .= strip_tags(warning_desc($k, $v["data"])) ;
                 }
-
-                $warning .="<span class='proofreading-item {$type}1'  title='check:{$desc}'>$t[$i]</span><br />";
+                $kekka = ($type === "warning") ? "△あり":"すべてOK🎉";
+                $warning .="<span class='proofreading-item {$type}1'  title='{$kekka}:{$desc}'>$t[$i]</span><br />";
             }
         }else{
             $warning .= $t[$i]."<br />";
