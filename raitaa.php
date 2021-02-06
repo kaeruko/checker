@@ -164,16 +164,20 @@ function raitaa_do_checker ($content) {
                 }
                 if($results[$title_line]["kwcheck"]["type"] !== "warning"){
                     $results[$title_line]["kwcheck"]["type"] = $type;
+// var_dump($results[$title_line]["kwcheck"]["type"]);
                 }
                 if($title_line === -1){
                     $results[$title_line]["kwcheck"]["data"] .= "{$chap_no}:{$tmp}";
 
                 }else{
                     $results[$title_line]["kwcheck"]["data"] .= "{$tmp}";
+                    $results[-1]["kwcheck"]["type"] = $type;
                     $results[-1]["kwcheck"]["data"] .= "{$chap_no}:{$tmp}";
                 }
 
                 $type = (count($norma["kwcount"]) !== 3) ? "warning":"debug";
+// var_dump($title_line);
+// var_dump($type);
 
                 $results[$title_line]["kwmissing"] = array("type" => $type, "data"=> count($norma["kwcount"]));
                 //見出し3の数
@@ -229,9 +233,9 @@ function raitaa_do_checker ($content) {
                 $len = get_len($line);
                 //見出し2の文字数が17~23
                 if($len < 15){
-                    $results[$i]["len_min"] = array("type"=> "warning", "data" =>"{$len}文字 △");
+                    $results[$i]["len_min"] = array("type"=> "warning", "data" =>"{$len}文字");
                 }elseif($len > 23){
-                    $results[$i]["len_max"] = array("type"=> "warning", "data" =>"{$len}文字 △");
+                    $results[$i]["len_max"] = array("type"=> "warning", "data" =>"{$len}文字");
                 }else{
                     $results[$i]["h2_len"] = array("type"=> "debug", "data" =>"{$len}文字");
                 }
@@ -419,11 +423,13 @@ function raitaa_do_checker ($content) {
             }else{
                 foreach ($results[$i] as $k => $v) {
                     $desc .= "\n";
-                    if($v["type"] === "warning" || $type === "warning"){
+                    if($v["type"] === "warning" ){
+                    // if($v["type"] === "warning" || $type === "warning"){
                         $type = "warning";
-                        $desc .= "△";    
+                        $desc .= "△";
                     }else{
-                        $desc .= "🌸";                    }
+                        $desc .= "🌸";
+                    }
                     $desc .= strip_tags(warning_desc($k, $v["data"])) ;
                 }
                 $kekka = ($type === "warning") ? "△あり":"すべてOK🎉";
@@ -591,13 +597,13 @@ function insert_kw_fields() {
 }
 
 function save_kw_fields( $post_id ) {
-    if(get_post_meta($post_id, "writer_keyword") == ""){
+    if(get_post_meta($post_id, "writer_keyword",true) == ""){
         //新しいデータならデータを作成
         add_post_meta($post_id, "writer_keyword", $_POST['writer_keyword'], true);
     }elseif(!empty($_POST['writer_keyword'])){
         update_post_meta($post_id, 'writer_keyword', $_POST['writer_keyword'] ); //値を保存
     }else{ //題名未入力の場合
-        delete_post_meta($post_id, 'writer_keyword'); 
+        // delete_post_meta($post_id, 'writer_keyword',true); 
     }
 }
 register_setting( 'weiting_setting', 'weiting_setting', 'sanitize' );
