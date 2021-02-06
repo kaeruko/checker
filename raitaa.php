@@ -587,12 +587,12 @@ function writer_add_button() {
 }
 
 function add_kw_fields() {
-    add_meta_box( 'book_setting', 'キーワード', 'insert_kw_fields', 'post', 'normal');
+    add_meta_box( 'book_setting', '指定キーワード', 'insert_kw_fields', 'post', 'normal');
 }
 
 function insert_kw_fields() {
     global $post;
-    echo '指定キーワード： <input type="text" name="writer_keyword" value="'.get_post_meta($post->ID, 'writer_keyword', true).'" size="50" />書き方：<br /><p class="howto">見出し2-1のキーワード1-見出し2-1のキーワード2-見出し2-1のキーワード3,見出し2-2のキーワード1-見出し2-2のキーワード2-見出し2-2のキーワード3と書いてください<br />
+    echo '<input type="text" name="writer_keyword" value="'.get_post_meta($post->ID, 'writer_keyword', true).'" size="50" />書き方：<br /><p class="howto">見出し2-1のキーワード1-見出し2-1のキーワード2-見出し2-1のキーワード3,見出し2-2のキーワード1-見出し2-2のキーワード2-見出し2-2のキーワード3と書いてください<br />
     例:パフ-洗う-頻度,パフ-洗う-ダイソー,パフ-洗う-石鹸</p>';
 }
 
@@ -602,8 +602,6 @@ function save_kw_fields( $post_id ) {
         add_post_meta($post_id, "writer_keyword", $_POST['writer_keyword'], true);
     }elseif(!empty($_POST['writer_keyword'])){
         update_post_meta($post_id, 'writer_keyword', $_POST['writer_keyword'] ); //値を保存
-    }else{ //題名未入力の場合
-        // delete_post_meta($post_id, 'writer_keyword',true); 
     }
 }
 register_setting( 'weiting_setting', 'weiting_setting', 'sanitize' );
