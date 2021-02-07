@@ -29,10 +29,10 @@ function raitaa_do_checker ($content) {
     $results = array();
     $id = get_the_ID();
     $type = "";
-    $writer_keyword = get_post_meta($id, 'writer_keyword', true);
-    if($writer_keyword){
+    $raitaa_keyword = get_post_meta($id, 'raitaa_keyword', true);
+    if($raitaa_keyword){
         $chapter["keyword"] = array_map(function($w) { return explode("-", $w); },
-        explode(",", $writer_keyword));
+        explode(",", $raitaa_keyword));
     }
     //メタディスクリプション
     $the_page_meta_description = (get_post_meta($id, 'the_page_meta_description', true));
@@ -116,8 +116,6 @@ function raitaa_do_checker ($content) {
 
             if(@$matches[1] === "<h2>" || $tcount == ($i+1)){
                 if($chapter["section"] === 1){
-var_dump( strip_tags( $matches[0]));
-var_dump($chapter["section"]);
                     $results[$title_line]["section"] = array("type"=> "warning", "data" => $chapter["section"]);
                 }
                 //導入文の文字数が300~350
@@ -129,12 +127,12 @@ var_dump($chapter["section"]);
 
                 }
 
-                if($norma["color"] === 0  ){
+                if($norma["color"] === 0 && !$abstract ){
                     // error_log(print_r("{$t[$title_line]}\n"));
                     $results[$title_line]["no_color"] = array("type" =>"warning", "data" => $norma["color"]);
                 }
 
-                if($norma["strong"] === 0  ){
+                if($norma["strong"] === 0 && !$abstract ){
                     // error_log(print_r("{$t[$title_line]}\n"));
                     $results[$title_line]["no_strong"] = array("type" =>"warning", "data" => $norma["strong"]);
                 }
@@ -155,7 +153,9 @@ var_dump($chapter["section"]);
                     }
                     $tmp .= "{$k}:{$v} ";
                 }
-                $chap_no = get_summary($chapter["number"]);
+                $type = ($type === "warning" || count($norma["kwcount"]) !== 3) ? "warning":"debug";
+
+                $chap_no = get_summary($chapter["number"], $abstract);
                 if($results[$title_line]["kwcheck"]["type"] !== "warning"){
                     $results[$title_line]["kwcheck"]["type"] = $type;
                 }
@@ -169,14 +169,6 @@ var_dump($chapter["section"]);
                     $results[-1]["kwcheck"]["type"] = $type;
                     $results[-1]["kwcheck"]["data"] .= "<br />{$kekka}{$chap_no}:{$tmp}";
                 }
-
-
-
-
-                $type = (count($norma["kwcount"]) !== 3) ? "warning":"debug";
-                $results[$title_line]["kwmissing"] = array("type" => $type, "data"=> count($norma["kwcount"]));
-
-
 
                 //見出し3の数
                 $chapter["section"] = 0;
@@ -320,8 +312,8 @@ var_dump($chapter["section"]);
                 //まとめの場合は警告
                 if($abstract){
                     $results[$i]["abst_tag"] = array("type"=> "warning", "data" =>$matches[1]);
-                //すでにある場合は警告
-                }elseif($norma["strong"] > 0){
+                //導入文ですでにある場合は警告
+                }elseif(($chapter["number"] === -1) && $norma["strong"] > 0){
                     $results[$i]["too_strong"] = array("type"=> "warning", "data" =>$matches[1]);
                 }else{
                     if(preg_match("/^<strong>.*<\/strong>$/u", $t[$i], $matches)){
@@ -339,7 +331,7 @@ var_dump($chapter["section"]);
                     $results[$i]["abst_tag"] = array("type"=> "warning", "data" =>$matches[0]);
                 }else{
                 // if(preg_match("/src=.+?\"(.*?)\\\ /x", $t[$i+1], $matches)){
-                    if(preg_match("/^<span style.*<\/span>$/u", $t[$i], $matches)){
+                    if(preg_match("/^<span style.*(！|。)<\/span>/u", $t[$i], $matches)){
                         //Bタグとcolorタグは一行に修飾。
                         //修飾ノルマクリア
                         $norma["color"] += 1;
@@ -449,7 +441,7 @@ function warning_desc($warning, $val) {
     }
     switch ($warning) {
         case "no_blank":
-            $result = sprintf("直前に改行がありません△", $val);
+            $result = sprintf("直前に改行がありません", $val);
             break;
         case "h2_len":
             $result = sprintf("見出しの文字数(15~23) 【%s】文字", $val);
@@ -524,7 +516,16 @@ function warning_desc($warning, $val) {
             $result = sprintf("記事の文字数 (こぴらん数え上げ)</span><br />%s文字数", $val);
             break;
         case "too_strong":
-            $result = sprintf("Bタグが2つ以上(別にいいかも)</span><br />%s", $val);
+            $result = sprintf("導入文ではBタグは1つのみ</span><br />%s", $val);
+            break;
+        case "no_strong":
+            $result = sprintf("Bタグがありません</span><br />%s", $val);
+            break;
+        case "kanma":
+            $result = sprintf("見出しに句読点が入っています</span><br />【%s】", $val);
+            break;
+        case "no_img":
+            $result = sprintf("見出しの下に画像が入っていません</span><br />【%s】", $val);
             break;
         case "between":
             $result = sprintf("指定キーワードの間に記号が入っています</span><br />：%s", $val);
@@ -546,7 +547,7 @@ function get_len($string) {
     return mb_strwidth($string,'UTF-8')/2;
 }
 
-function get_summary($chap_no) {
+function get_summary($chap_no, $abstract) {
     if($chap_no === -1){
         return "導入文";
     }elseif ($abstract) {
@@ -625,15 +626,15 @@ function add_kw_fields() {
 
 function insert_kw_fields() {
     global $post;
-    echo '<input type="text" name="writer_keyword" value="'.get_post_meta($post->ID, 'writer_keyword', true).'" size="50" />書き方：<br /><p class="howto">見出し2-1のキーワード1-見出し2-1のキーワード2-見出し2-1のキーワード3,見出し2-2のキーワード1-見出し2-2のキーワード2-見出し2-2のキーワード3と書いてください<br />
+    echo '<input type="text" name="raitaa_keyword" value="'.get_post_meta($post->ID, 'raitaa_keyword', true).'" size="50" />書き方：<br /><p class="howto">見出し2-1のキーワード1-見出し2-1のキーワード2-見出し2-1のキーワード3,見出し2-2のキーワード1-見出し2-2のキーワード2-見出し2-2のキーワード3と書いてください<br />
     例:パフ-洗う-頻度,パフ-洗う-ダイソー,パフ-洗う-石鹸</p>';
 }
 
 function save_kw_fields( $post_id ) {
-    if(get_post_meta($post_id, "writer_keyword",true) == ""){
-        add_post_meta($post_id, "writer_keyword", $_POST['writer_keyword'], true);
-    }elseif(!empty($_POST['writer_keyword'])){
-        update_post_meta($post_id, 'writer_keyword', $_POST['writer_keyword'] );
+    if(get_post_meta($post_id, "raitaa_keyword",true) == ""){
+        add_post_meta($post_id, "raitaa_keyword", $_POST['raitaa_keyword'], true);
+    }elseif(!empty($_POST['raitaa_keyword'])){
+        update_post_meta($post_id, 'raitaa_keyword', $_POST['raitaa_keyword'] );
     }
 }
 register_setting( 'weiting_setting', 'weiting_setting', 'sanitize' );
