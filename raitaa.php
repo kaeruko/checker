@@ -104,7 +104,7 @@ function raitaa_do_checker ($content) {
 || $tcount == ($i+1)
     ){
             //見出しに、はつけない
-            if(preg_match("/、/u", $line, $_m)){
+            if(preg_match("/、|「|」|①/u", $line, $_m)){
                 $results[$i]["kanma"] = array("type"=> "warning", "data" =>$_m[0]);
             }
             //見出しの?、!が半角か
@@ -227,11 +227,11 @@ function raitaa_do_checker ($content) {
                 $len = get_len($line);
                 //見出し2の文字数が17~23
                 if($len < 15){
-                    $results[$i]["len_min"] = array("type"=> "warning", "data" =>"{$len}文字");
+                    $results[$i]["len_min"] = array("type"=> "warning", "data" =>"{$len}");
                 }elseif($len > 24){
-                    $results[$i]["len_max"] = array("type"=> "warning", "data" =>"{$len}文字");
+                    $results[$i]["len_max"] = array("type"=> "warning", "data" =>"{$len}");
                 }else{
-                    $results[$i]["h2_len"] = array("type"=> "debug", "data" =>"{$len}文字");
+                    $results[$i]["h2_len"] = array("type"=> "debug", "data" =>"{$len}");
                 }
 
                 //指定キーワードが順番どおりに入る
@@ -246,11 +246,16 @@ function raitaa_do_checker ($content) {
                     }
                 }
                 //見出し2のキーワードの間に記号!,?,♪が入ってない
-                if(preg_match_all("/{$chapter["keyword"][$n][0]}(.*){$chapter["keyword"][$n][1]}(.*){$chapter["keyword"][$n][2]}/u", $line, $m)){
-                    if(preg_match("/!|\?|♪/u", $m[1][0].$m[2][0], $matches)){
+                if(preg_match("/{$chapter["keyword"][$n][0]}(.*){$chapter["keyword"][$n][1]}(.*){$chapter["keyword"][$n][2]}/u", $line, $m)){
+                    if( get_len($m[1].$m[2]) > 6  ){
+                        $results[$i]["between_long"] = array("type"=> "warning", "data" =>null);
+
+                    }
+                    if(preg_match("/!|\?|♪/u", $m[1].$m[2], $matches)){
                         $results[$i]["between"] = array("type"=> "warning", "data" =>implode($matches, ""));
                     }
                 }
+
             }elseif($matches[2] === "<h3>"){
                 $ret = is_blank($t, $i, -1);
                 $results[$i]["blank"] = array("type"=> $ret["type"], "data" => $ret["data"]);
@@ -453,10 +458,10 @@ function warning_desc($warning, $val) {
             $result = sprintf("見出し前の改行(見出し2は2行,3なら1行)【%s行】", abs($val));
             break;
         case "h2_len":
-            $result = sprintf("見出しの文字数(15~23) 【%s】文字", $val);
+            $result = sprintf("見出しの文字数(15~24) 【%s文字】", $val);
             break;
         case "len_max":
-            $result = sprintf("タイトルが長過ぎます(20文字前後) 【%s】", $val);
+            $result = sprintf("タイトルが長過ぎます(20文字前後) 【%s文字】", $val);
             break;
         case "bad_blank":
             $result = sprintf("見出しや吹き出しの前以外で改行が入っています 【%s】", $val);
@@ -531,7 +536,7 @@ function warning_desc($warning, $val) {
             $result = sprintf("Bタグがありません</span><br />%s", $val);
             break;
         case "kanma":
-            $result = sprintf("見出しに句読点が入っています</span><br />【%s】", $val);
+            $result = sprintf("見出しに記号が入っています</span><br />【%s】", $val);
             break;
         case "no_img":
             $result = sprintf("見出しの下に画像が入っていません</span><br />【%s】", $val);
