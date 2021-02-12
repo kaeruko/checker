@@ -76,6 +76,9 @@ function raitaa_do_checker ($content) {
     $title_line = -1;
     for ($i=0; $i < count($t); $i++) {
         $line = strip_tags($t[$i]);
+
+        //吹き出し内は改行のルールはないですが、行が長くなるのは避けます(lightbulb)
+        
         //空行の場合、下にhrか空行があるかチェック
         if(preg_match("/&nbsp;/u", $t[$i], $matches)){
             //これだと3空行があってもスルーされるな
@@ -110,18 +113,20 @@ function raitaa_do_checker ($content) {
             }
 
             if($t[$i-1] !== "&nbsp;"){
-// var_dump(substr($line, 0,5));
-                $results[$i]["no_blank"] = array("type"=> "warning", "data" =>substr($line, 0,5));
+                // $results[$i]["no_blank"] = array("type"=> "warning", "data" =>substr($line, 0,5));
             }
 
             if(@$matches[1] === "<h2>" || $tcount == ($i+1)){
+                $ret = is_blank($t, $i, -2);
+                $results[$i]["blank"] = array("type"=> $ret["type"], "data" => $ret["data"]);
+
                 if($chapter["section"] === 1){
                     $results[$title_line]["section"] = array("type"=> "warning", "data" => $chapter["section"]);
                 }
                 //導入文の文字数が300~350
                 // error_log(print_r("intro_count:{$intro_count}"));
                 if($chapter["number"] === -1 ){
-                    $intro_count -=1;
+                    $intro_count -=0.5;
                     $type = ($intro_count < 300 || $intro_count > 350) ? "warning":"debug";
                     $results[-1]["intro_count"] = array("type" => $type, "data"=>$intro_count);
 
@@ -177,7 +182,7 @@ function raitaa_do_checker ($content) {
                 $chapter["line"][$chapter["number"]] = $i;
                 // 前章が終わった。前節の数チェック(見出し3は2つ以上入れる)
                 $title_line = $chapter["line"][$chapter["number"]];
-                
+
                 $n = $chapter["number"];
                 if($chapter["number"] < 0){
                     $n = 0;
@@ -191,15 +196,9 @@ function raitaa_do_checker ($content) {
                 //直前に空行2行ある
                 if($t[$i-2] !== "&nbsp;"){
                 // error_log(print_r("\n{$t[$i-1]}\n{$t[$i-2]}\n"));
-                    $results[$i]["no_blank"] = array("type"=> "warning", "data" =>$t[$i-2]);
+                    // $results[$i]["no_blank"] = array("type"=> "warning", "data" =>$t[$i-2]);
                 }
 
-
-                if($line == "まとめ"){
-                    $abstract = true;
-                    $n = 0;
-                    continue;
-                }
                 //見出し2(まとめも)の下に画像がある
                 if(preg_match("/src=.+?\"(.*?) \"?/x", $t[$i+1], $matches)){
                     //画像のサイズが横300形式がjpg
@@ -218,12 +217,18 @@ function raitaa_do_checker ($content) {
                     $results[$i]["no_img"] = array("type"=> "warning", "data" =>$line);
                 }
 
+
+                if($line == "まとめ"){
+                    $abstract = true;
+                    $n = 0;
+                    continue;
+                }
                 // $results[$i] = $line;    //array("type"=> "warning", "data" =>ここは共通
                 $len = get_len($line);
                 //見出し2の文字数が17~23
                 if($len < 15){
                     $results[$i]["len_min"] = array("type"=> "warning", "data" =>"{$len}文字");
-                }elseif($len > 23){
+                }elseif($len > 24){
                     $results[$i]["len_max"] = array("type"=> "warning", "data" =>"{$len}文字");
                 }else{
                     $results[$i]["h2_len"] = array("type"=> "debug", "data" =>"{$len}文字");
@@ -246,7 +251,11 @@ function raitaa_do_checker ($content) {
                         $results[$i]["between"] = array("type"=> "warning", "data" =>implode($matches, ""));
                     }
                 }
-            }elseif($matches[2] == "<h3>"){
+            }elseif($matches[2] === "<h3>"){
+                $ret = is_blank($t, $i, -1);
+                $results[$i]["blank"] = array("type"=> $ret["type"], "data" => $ret["data"]);
+
+                //見出し3は短くできるなら短い方がいい
                 $chapter["section"]++;
             }
 
@@ -254,7 +263,7 @@ function raitaa_do_checker ($content) {
             //空行でもない空白の場合(divタグなど)
             if($line == ""){
                 if($chapter["number"] === -1){
-                    $intro_count += 0.5;
+                    // $intro_count += 0.5;
                 }
                 continue;
             }
@@ -316,7 +325,7 @@ function raitaa_do_checker ($content) {
                 }elseif(($chapter["number"] === -1) && $norma["strong"] > 0){
                     $results[$i]["too_strong"] = array("type"=> "warning", "data" =>$matches[1]);
                 }else{
-                    if(preg_match("/^<strong>.*<\/strong>$/u", $t[$i], $matches)){
+                    if(preg_match("/^<strong>.*<\/strong>/u", $t[$i], $matches)){
                         //Bタグとcolorタグは一行に修飾。
                         //修飾ノルマクリア
                         $norma["strong"] += 1;
@@ -440,8 +449,8 @@ function warning_desc($warning, $val) {
         $val = strip_tags($val);
     }
     switch ($warning) {
-        case "no_blank":
-            $result = sprintf("直前に改行がありません", $val);
+        case "blank":
+            $result = sprintf("見出し前の改行(見出し2は2行,3なら1行)【%s行】", abs($val));
             break;
         case "h2_len":
             $result = sprintf("見出しの文字数(15~23) 【%s】文字", $val);
@@ -556,11 +565,21 @@ function get_summary($chap_no, $abstract) {
         return "見出し2-".($chap_no+1);
     }
 }
-
-/*
-*cssリンクをヘッダーに追加する
-*/
-
+function is_blank($t, $i, $check) {
+    $tmp = -1;
+    while (true) {
+        if($t[$i+$tmp] !== "&nbsp;"){
+            $tmp+=1;
+            break;
+        }
+        $tmp-=1;
+    }
+    if($tmp === $check){
+        return array("type" => "debug", "data" => $tmp);
+    }else{
+        return array("type" => "warning", "data" => $tmp);
+    }
+}
 
 function raitaa_css () {
     //プレビュー画面かつ「校正情報プレビュー」ボタンから呼ばれた時にのみ処理を実施
@@ -605,6 +624,7 @@ function writer_add_button() {
     //判別用にクリエストリング「proofreading=yes」を追加
     $query_args['preview'] = 'true';
     $query_args['writer'] = 'yes';
+
     $url = html_entity_decode(esc_url(add_query_arg($query_args, get_permalink($page->ID))));
 ?>
 <script>
@@ -620,26 +640,27 @@ function writer_add_button() {
 <?php
 }
 
-function add_kw_fields() {
-    add_meta_box( 'book_setting', '指定キーワード', 'insert_kw_fields', 'post', 'normal');
-}
+// function add_kw_fields() {
+//     add_meta_box( 'custom_setting', '指定キーワード', 'insert_kw_fields', 'post', 'normal');
+// }
 
-function insert_kw_fields() {
-    global $post;
-    echo '<input type="text" name="raitaa_keyword" value="'.get_post_meta($post->ID, 'raitaa_keyword', true).'" size="50" />書き方：<br /><p class="howto">見出し2-1のキーワード1-見出し2-1のキーワード2-見出し2-1のキーワード3,見出し2-2のキーワード1-見出し2-2のキーワード2-見出し2-2のキーワード3と書いてください<br />
-    例:パフ-洗う-頻度,パフ-洗う-ダイソー,パフ-洗う-石鹸</p>';
-}
+// function insert_kw_fields() {
+//     global $post;
+//     echo '<input type="text" name="raitaa_keyword" value="'.get_post_meta($post->ID, 'raitaa_keyword', true).'" size="50" />書き方：<br /><p class="howto">見出し2-1のキーワード1-見出し2-1のキーワード2-見出し2-1のキーワード3,見出し2-2のキーワード1-見出し2-2のキーワード2-見出し2-2のキーワード3と書いてください<br />
+//     例:パフ-洗う-頻度,パフ-洗う-ダイソー,パフ-洗う-石鹸</p>';
+// }
 
-function save_kw_fields( $post_id ) {
-    if(get_post_meta($post_id, "raitaa_keyword",true) == ""){
-        add_post_meta($post_id, "raitaa_keyword", $_POST['raitaa_keyword'], true);
-    }elseif(!empty($_POST['raitaa_keyword'])){
-        update_post_meta($post_id, 'raitaa_keyword', $_POST['raitaa_keyword'] );
-    }
-}
-register_setting( 'weiting_setting', 'weiting_setting', 'sanitize' );
 
-add_action( 'admin_footer-post-new.php', 'writer_add_button' );
-add_action( 'admin_footer-post.php', 'writer_add_button' );
-add_action('admin_menu', 'add_kw_fields');
-add_action('save_post', 'save_kw_fields');
+// function save_kw_fields( $post_id ) {
+//     if(get_post_meta($post_id, "raitaa_keyword",true) == ""){
+//         add_post_meta($post_id, "raitaa_keyword", $_POST['raitaa_keyword'], true);
+//     }elseif(!empty($_POST['raitaa_keyword'])){
+//         update_post_meta($post_id, 'raitaa_keyword', $_POST['raitaa_keyword'] );
+//     }
+// }
+// register_setting( 'weiting_setting', 'weiting_setting', 'sanitize' );
+
+// add_action( 'admin_footer-post-new.php', 'writer_add_button' );
+// add_action( 'admin_footer-post.php', 'writer_add_button' );
+// add_action('admin_menu', 'add_kw_fields');
+// add_action('save_post', 'save_kw_fields');
