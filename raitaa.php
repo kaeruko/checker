@@ -74,7 +74,12 @@ function raitaa_do_checker ($content) {
     $intro_count = 0;
     $tcount = count($t);
     $title_line = -1;
+    $len_check = true;
     for ($i=0; $i < count($t); $i++) {
+
+        //閉じタグチェック
+
+
         $line = strip_tags($t[$i]);
 
         //吹き出し内は改行のルールはないですが、行が長くなるのは避けます(lightbulb)
@@ -88,9 +93,9 @@ function raitaa_do_checker ($content) {
             continue;
         }
         //ボックスタグの場合リストタグと併用
-        if(preg_match("/information-box/u", $t[$i], $matches)){
+        if(preg_match("/-box/u", $t[$i], $matches)){
             //タグ内全部見るべきだろうけど下だけ
-            if($t[$i+1] !=="<ul>"){
+            if($t[$i+2] !=="<ol>"){
                 // error_log(print_r($t[$i+1]));
                 $results[$i]["no_list"] = array("type"=> "warning", "data" =>$t[$i]);
             }
@@ -199,6 +204,8 @@ function raitaa_do_checker ($content) {
                     // $results[$i]["no_blank"] = array("type"=> "warning", "data" =>$t[$i-2]);
                 }
 
+                //localhostの画像を使っていない
+
                 //見出し2(まとめも)の下に画像がある
                 if(preg_match("/src=.+?\"(.*?) \"?/x", $t[$i+1], $matches)){
                     //画像のサイズが横300形式がjpg
@@ -265,6 +272,24 @@ function raitaa_do_checker ($content) {
             }
 
         }else{
+            //localhostの画像
+            if(preg_match("/http:\/\/localhost(.*?)\"/x", $t[$i], $matches)){
+                $results[$title_line]["localhost"] = array("type"=> "warning", "data" => (get_summary($chapter["number"], $abstract)) ." ". ($matches[0]) );
+            }
+
+
+            if(preg_match("/<\/div>/", $t[$i], $matches)){
+                $len_check = true;
+                $ending_check = true;
+            }
+
+            if($len_check && preg_match("/<div class=\"(.*?)\">/", $t[$i], $matches)){
+                $len_check = false;
+                if($matches[1] !== "speech-balloon"){
+                    $ending_check = false;
+                }
+            }
+
             //空行でもない空白の場合(divタグなど)
             if($line == ""){
                 if($chapter["number"] === -1){
@@ -277,15 +302,9 @@ function raitaa_do_checker ($content) {
                 $intro_count += get_len($line)+1;
             }
 
-            //リストタグの場合は字数や文末をチェックしない
-            if(!preg_match("/<li>|<\/li>|speech-balloon/u", $t[$i], $matches)){
-                //文末に。か？か！か♪が入っている(まとめ、空行、タイトル、テーブル以外)
-                if(!preg_match("/(？|！|。|♪|\)|）)$/u", $line, $matches)){
-                    //下の行がリストタグ
 
-                    preg_match("/.$/u", $line, $matches);
-                    $results[$i]["ending"] = array("type"=> "warning", "data" =>$matches[0]);
-                }
+            //リストタグの場合は字数や文末をチェックしない
+            if($len_check && !preg_match("/<li>|<\/li>/u", $t[$i], $matches)){
                 //改行までの文字列がスマホで2行~4行に収まる
                 $l = get_len($line);
                 // error_log(print_r("get_len:{$line}\n"));
@@ -296,6 +315,16 @@ function raitaa_do_checker ($content) {
                     $results[$i]["toolong"] = array("type"=> "warning", "data" =>$l);
                 }
             }
+
+            if($ending_check){
+                //文末に。か？か！か♪が入っている(まとめ、空行、タイトル、テーブル以外)
+                if(!preg_match("/(？|！|。|♪|\)|）)$/u", $line, $matches)){
+                    //下の行がリストタグ
+                    preg_match("/.$/u", $line, $matches);
+                    $results[$i]["ending"] = array("type"=> "warning", "data" =>$matches[0]);
+                }
+            }
+
             //まとめの箇条書きカウント
             if(preg_match("/<li>|<\/li>/u", $t[$i], $matches)){
                 if($abstract){
@@ -550,6 +579,9 @@ function warning_desc($warning, $val) {
         case "section":
             $result = sprintf("見出し3は2つ以上入れてください：【%sつ】", $val);
             break;
+        case "localhost":
+            $result = sprintf("ローカルの画像が使われています：<br />%s", $val);
+            break;
         default:
             $result = sprintf("{$warning} %s", $val);
             break;
@@ -645,27 +677,27 @@ function writer_add_button() {
 <?php
 }
 
-// function add_kw_fields() {
-//     add_meta_box( 'custom_setting', '指定キーワード', 'insert_kw_fields', 'post', 'normal');
-// }
+function add_kw_fields() {
+    add_meta_box( 'custom_setting', '指定キーワード', 'insert_kw_fields', 'post', 'normal');
+}
 
-// function insert_kw_fields() {
-//     global $post;
-//     echo '<input type="text" name="raitaa_keyword" value="'.get_post_meta($post->ID, 'raitaa_keyword', true).'" size="50" />書き方：<br /><p class="howto">見出し2-1のキーワード1-見出し2-1のキーワード2-見出し2-1のキーワード3,見出し2-2のキーワード1-見出し2-2のキーワード2-見出し2-2のキーワード3と書いてください<br />
-//     例:パフ-洗う-頻度,パフ-洗う-ダイソー,パフ-洗う-石鹸</p>';
-// }
+function insert_kw_fields() {
+    global $post;
+    echo '<input type="text" name="raitaa_keyword" value="'.get_post_meta($post->ID, 'raitaa_keyword', true).'" size="50" />書き方：<br /><p class="howto">見出し2-1のキーワード1-見出し2-1のキーワード2-見出し2-1のキーワード3,見出し2-2のキーワード1-見出し2-2のキーワード2-見出し2-2のキーワード3と書いてください<br />
+    例:パフ-洗う-頻度,パフ-洗う-ダイソー,パフ-洗う-石鹸</p>';
+}
 
 
-// function save_kw_fields( $post_id ) {
-//     if(get_post_meta($post_id, "raitaa_keyword",true) == ""){
-//         add_post_meta($post_id, "raitaa_keyword", $_POST['raitaa_keyword'], true);
-//     }elseif(!empty($_POST['raitaa_keyword'])){
-//         update_post_meta($post_id, 'raitaa_keyword', $_POST['raitaa_keyword'] );
-//     }
-// }
-// register_setting( 'weiting_setting', 'weiting_setting', 'sanitize' );
+function save_kw_fields( $post_id ) {
+    if(get_post_meta($post_id, "raitaa_keyword",true) == ""){
+        add_post_meta($post_id, "raitaa_keyword", $_POST['raitaa_keyword'], true);
+    }elseif(!empty($_POST['raitaa_keyword'])){
+        update_post_meta($post_id, 'raitaa_keyword', $_POST['raitaa_keyword'] );
+    }
+}
+register_setting( 'weiting_setting', 'weiting_setting', 'sanitize' );
 
-// add_action( 'admin_footer-post-new.php', 'writer_add_button' );
-// add_action( 'admin_footer-post.php', 'writer_add_button' );
-// add_action('admin_menu', 'add_kw_fields');
-// add_action('save_post', 'save_kw_fields');
+add_action( 'admin_footer-post-new.php', 'writer_add_button' );
+add_action( 'admin_footer-post.php', 'writer_add_button' );
+add_action('admin_menu', 'add_kw_fields');
+add_action('save_post', 'save_kw_fields');
