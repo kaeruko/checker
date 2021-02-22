@@ -78,7 +78,11 @@ function raitaa_do_checker ($content) {
     for ($i=0; $i < count($t); $i++) {
 
         //閉じタグチェック
-
+        //内部リンク
+        if(preg_match("/^<a href=/u", $t[$i], $matches)){
+            $results[$i]["href"] = array("type"=> "warning", "data" =>$t[$i]);
+            continue;
+        }
 
         $line = strip_tags($t[$i]);
 
@@ -97,7 +101,7 @@ function raitaa_do_checker ($content) {
             //タグ内全部見るべきだろうけど下だけ
             if($t[$i+2] !=="<ol>"){
                 // error_log(print_r($t[$i+1]));
-                $results[$i]["no_list"] = array("type"=> "warning", "data" =>$t[$i]);
+                // $results[$i]["no_list"] = array("type"=> "warning", "data" =>$t[$i]);
             }
         }
         //数字は全て半角
@@ -233,9 +237,9 @@ function raitaa_do_checker ($content) {
                 // $results[$i] = $line;    //array("type"=> "warning", "data" =>ここは共通
                 $len = get_len($line);
                 //見出し2の文字数が17~23
-                if($len < 15){
+                if($len < 17){
                     $results[$i]["len_min"] = array("type"=> "warning", "data" =>"{$len}");
-                }elseif($len > 24){
+                }elseif($len > 22){
                     $results[$i]["len_max"] = array("type"=> "warning", "data" =>"{$len}");
                 }else{
                     $results[$i]["h2_len"] = array("type"=> "debug", "data" =>"{$len}");
@@ -383,26 +387,29 @@ function raitaa_do_checker ($content) {
 
             }
 
+            if(isset($chapter["keyword"][$n]) 
+                // && $i !== $chapter["line"][$chapter["number"]]
+                 ){
+                if(preg_match_all("/({$chapter["keyword"][$n][0]})|({$chapter["keyword"][$n][1]})|({$chapter["keyword"][$n][2]})/u", $line, $matches)){
+// var_dump("/({$chapter["keyword"][$n][0]})|({$chapter["keyword"][$n][1]})|({$chapter["keyword"][$n][2]})/u");
+// var_dump($chapter["keyword"]);
+                    foreach ($matches[0] as $k => $v) {
+                        $norma["kwcount"][$v] += 1;
+                        if(!preg_match("/(<h2>).*<\/h2>|(<h3>).*<\/h3>/", $t[$i], $matches)){
+                            $t[$i] = preg_replace("/{$v}/","<span class='proofreading-item color".(array_search($v, $chapter["keyword"][$n])+1)."'
+                                title=". $norma["kwcount"][$v]. "回
+                                '>{$v}</span>", $t[$i]);
+
+                        }
+                    }
+                }
+            }
 
 
             //テーブルチェック
 
         }
 
-        if(isset($chapter["keyword"][$n]) 
-            && $i !== $chapter["line"][$chapter["number"]] ){
-            if(preg_match_all("/({$chapter["keyword"][$n][0]})|({$chapter["keyword"][$n][1]})|({$chapter["keyword"][$n][2]})/u", $line, $matches)){
-                foreach ($matches[0] as $k => $v) {
-                    $norma["kwcount"][$v] += 1;
-                    if(!preg_match("/(<h2>).*<\/h2>|(<h3>).*<\/h3>/", $t[$i], $matches)){
-                        $t[$i] = preg_replace("/{$v}/","<span class='proofreading-item color".(array_search($v, $chapter["keyword"][$n])+1)."'
-                            title=". $norma["kwcount"][$v]. "回
-                            '>{$v}</span>", $t[$i]);
-
-                    }
-                }
-            }
-        }
         //文章の途中にリンクを入れない
         //テーブルタグを使う場合カラム名は行名はstrongを入れる、中央揃え
         //キーワード入れ込みが不足してる場合、説明
@@ -487,7 +494,7 @@ function warning_desc($warning, $val) {
             $result = sprintf("見出し前の改行(見出し2は2行,3なら1行)【%s行】", abs($val));
             break;
         case "h2_len":
-            $result = sprintf("見出しの文字数(15~24) 【%s文字】", $val);
+            $result = sprintf("見出しの文字数(17~22) 【%s文字】", $val);
             break;
         case "len_max":
             $result = sprintf("タイトルが長過ぎます(20文字前後) 【%s文字】", $val);
