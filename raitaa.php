@@ -31,8 +31,10 @@ function raitaa_do_checker ($content) {
     $type = "";
     $raitaa_keyword = get_post_meta($id, 'raitaa_keyword', true);
     if($raitaa_keyword){
-        $chapter["keyword"] = array_map(function($w) { return explode("-", $w); },
-        explode(",", $raitaa_keyword));
+        $chapter["keyword"] = array_map(function($w) { 
+            $w2 = explode(",", $w);
+            return array("kws"=>explode(",", $w), "patt" => "/(".implode(")|(", $w2).")/u"); },
+        explode("-", $raitaa_keyword));
     }
     //メタディスクリプション
     $the_page_meta_description = (get_post_meta($id, 'the_page_meta_description', true));
@@ -75,6 +77,8 @@ function raitaa_do_checker ($content) {
     $tcount = count($t);
     $title_line = -1;
     $len_check = true;
+    $ending_check = true;
+
     for ($i=0; $i < count($t); $i++) {
 
         //閉じタグチェック
@@ -246,18 +250,19 @@ function raitaa_do_checker ($content) {
                 }
 
                 //指定キーワードが順番どおりに入る
-                if(preg_match_all("/({$chapter["keyword"][$n][0]})|({$chapter["keyword"][$n][1]})|({$chapter["keyword"][$n][2]})/u", $line, $matches)){
+                if(preg_match_all($chapter["keyword"][$n]["patt"], $line, $matches)){
+                    $tmp = $chapter["keyword"][$n]["kws"];
                     if(
-                        $matches[0][0] !== $chapter["keyword"][$chapter["number"]][0] &&
-                        $matches[0][1] !== $chapter["keyword"][$chapter["number"]][1] &&
-                        $matches[0][2] !== $chapter["keyword"][$chapter["number"]][2] 
+                        $matches[0][0] !== $tmp[0] &&
+                        $matches[0][1] !== $tmp[1] &&
+                        $matches[0][2] !== $tmp[2] 
 
                     ){
                         $results[$i]["keyword"] = array("type"=> "warning", "data" =>"指定キーワードが順番通りに入っていません");
                     }
                 }
                 //見出し2のキーワードの間に記号!,?,♪が入ってない
-                if(preg_match("/{$chapter["keyword"][$n][0]}(.*){$chapter["keyword"][$n][1]}(.*){$chapter["keyword"][$n][2]}/u", $line, $m)){
+                if(preg_match("/{$tmp[0]}(.*){$tmp[1]}(.*){$tmp[2]}/u", $line, $m)){
                     if( get_len($m[1].$m[2]) > 6  ){
                         $results[$i]["between_long"] = array("type"=> "warning", "data" =>null);
 
@@ -319,7 +324,6 @@ function raitaa_do_checker ($content) {
                     $results[$i]["toolong"] = array("type"=> "warning", "data" =>$l);
                 }
             }
-
             if($ending_check){
                 //文末に。か？か！か♪が入っている(まとめ、空行、タイトル、テーブル以外)
                 if(!preg_match("/(？|！|。|♪|\)|）)$/u", $line, $matches)){
@@ -390,13 +394,14 @@ function raitaa_do_checker ($content) {
             if(isset($chapter["keyword"][$n]) 
                 // && $i !== $chapter["line"][$chapter["number"]]
                  ){
-                if(preg_match_all("/({$chapter["keyword"][$n][0]})|({$chapter["keyword"][$n][1]})|({$chapter["keyword"][$n][2]})/u", $line, $matches)){
-// var_dump("/({$chapter["keyword"][$n][0]})|({$chapter["keyword"][$n][1]})|({$chapter["keyword"][$n][2]})/u");
-// var_dump($chapter["keyword"]);
+        // $chapter["keyword"] = array_map(function($w) { return explode("-", $w); },
+        // $chapter["keyword"][$n]);
+
+                if(preg_match_all($chapter["keyword"][$n]["patt"], $line, $matches)){
                     foreach ($matches[0] as $k => $v) {
                         $norma["kwcount"][$v] += 1;
                         if(!preg_match("/(<h2>).*<\/h2>|(<h3>).*<\/h3>/", $t[$i], $matches)){
-                            $t[$i] = preg_replace("/{$v}/","<span class='proofreading-item color".(array_search($v, $chapter["keyword"][$n])+1)."'
+                            $t[$i] = preg_replace("/{$v}/","<span class='proofreading-item color".(array_search($v, $chapter["keyword"][$n]["kws"])+1)."'
                                 title=". $norma["kwcount"][$v]. "回
                                 '>{$v}</span>", $t[$i]);
 
