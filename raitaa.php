@@ -171,7 +171,7 @@ function raitaa_do_checker ($content) {
                     }
                     $tmp .= "{$k}:{$v} ";
                 }
-                $type = ($type === "warning" || count($norma["kwcount"]) < 3) ? "warning":"debug";
+                $type = ($type === "warning" || count($norma["kwcount"]) <  count($chapter["keyword"][$n]["kws"])  ) ? "warning":"debug";
 
                 $chap_no = get_summary($chapter["number"], $abstract);
                 if($results[$title_line]["kwcheck"]["type"] !== "warning"){
