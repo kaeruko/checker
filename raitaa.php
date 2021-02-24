@@ -171,7 +171,7 @@ function raitaa_do_checker ($content) {
                     }
                     $tmp .= "{$k}:{$v} ";
                 }
-                $type = ($type === "warning" || count($norma["kwcount"]) !== 3) ? "warning":"debug";
+                $type = ($type === "warning" || count($norma["kwcount"]) < 3) ? "warning":"debug";
 
                 $chap_no = get_summary($chapter["number"], $abstract);
                 if($results[$title_line]["kwcheck"]["type"] !== "warning"){
@@ -250,7 +250,7 @@ function raitaa_do_checker ($content) {
                 }
 
                 //指定キーワードが順番どおりに入る
-                if(preg_match_all($chapter["keyword"][$n]["patt"], $line, $matches)){
+                if(isset($chapter["keyword"][$n]) && preg_match_all($chapter["keyword"][$n]["patt"], $line, $matches)){
                     $tmp = $chapter["keyword"][$n]["kws"];
                     if(
                         $matches[0][0] !== $tmp[0] &&
@@ -262,7 +262,7 @@ function raitaa_do_checker ($content) {
                     }
                 }
                 //見出し2のキーワードの間に記号!,?,♪が入ってない
-                if(preg_match("/{$tmp[0]}(.*){$tmp[1]}(.*){$tmp[2]}/u", $line, $m)){
+                if(isset($chapter["keyword"][$n]) && preg_match("/{$tmp[0]}(.*){$tmp[1]}(.*){$tmp[2]}/u", $line, $m)){
                     if( get_len($m[1].$m[2]) > 6  ){
                         $results[$i]["between_long"] = array("type"=> "warning", "data" =>null);
 
