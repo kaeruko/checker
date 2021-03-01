@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: raitaa
-Plugin URI: 
+Plugin URI:
 Description: WEBライティングの記事をチェックします
 Author: よきな
 Version: 1.0.0
@@ -31,7 +31,7 @@ function raitaa_do_checker ($content) {
     $type = "";
     $raitaa_keyword = get_post_meta($id, 'raitaa_keyword', true);
     if($raitaa_keyword){
-        $chapter["keyword"] = array_map(function($w) { 
+        $chapter["keyword"] = array_map(function($w) {
             $w2 = explode(",", $w);
             return array("kws"=>explode(",", $w), "patt" => "/(".implode(")|(", $w2).")/u"); },
         explode("-", $raitaa_keyword));
@@ -56,7 +56,7 @@ function raitaa_do_checker ($content) {
     }else{
         $tags = array();
     }
-    $type = (count($tags) !== 3) ? "warning":"debug";
+    $type = (count($tags) !== count($chapter["keyword"][0]["kws"])) ? "warning":"debug";
     $results[-1]["tag"] = array('type' => $type, 'data' => implode("-", $tags) . "(". (count($tags)).")");
     //カテゴリー
     $category = array_map(function($tag) { return $tag->name; },get_the_category());
@@ -91,7 +91,7 @@ function raitaa_do_checker ($content) {
         $line = strip_tags($t[$i]);
 
         //吹き出し内は改行のルールはないですが、行が長くなるのは避けます(lightbulb)
-        
+
         //空行の場合、下にhrか空行があるかチェック
         if(preg_match("/&nbsp;/u", $t[$i], $matches)){
             //これだと3空行があってもスルーされるな
@@ -117,7 +117,7 @@ function raitaa_do_checker ($content) {
 || $tcount == ($i+1)
     ){
             //見出しに、はつけない
-            if(preg_match("/、|「|」|①/u", $line, $_m)){
+            if(preg_match("/、|。|「|」|①/u", $line, $_m)){
                 $results[$i]["kanma"] = array("type"=> "warning", "data" =>$_m[0]);
             }
             //見出しの?、!が半角か
@@ -162,7 +162,7 @@ function raitaa_do_checker ($content) {
                 $type = "debug";
                 //1こもない
                 if(!$norma["kwcount"] ){
-                    $type = "warning";                    
+                    $type = "warning";
                 }
                 foreach ($norma["kwcount"] as $k => $v) {
                 // error_log(print_r("\n$t[$i] {$k}が{$v}:\n"));
@@ -255,7 +255,7 @@ function raitaa_do_checker ($content) {
                     if(
                         $matches[0][0] !== $tmp[0] &&
                         $matches[0][1] !== $tmp[1] &&
-                        $matches[0][2] !== $tmp[2] 
+                        $matches[0][2] !== $tmp[2]
 
                     ){
                         $results[$i]["keyword"] = array("type"=> "warning", "data" =>"指定キーワードが順番通りに入っていません");
@@ -338,7 +338,7 @@ function raitaa_do_checker ($content) {
                 if($abstract){
                     $norma["abst_list"] += 1;
                 }else{
-                    //<div class="blank-box 
+                    //<div class="blank-box
                     //まとめ以外の箇条書きの場合上に文章があること
                     if(preg_match("/^<h2>|^<h3>/u", $t[$i-1], $matches)){
 
@@ -391,7 +391,7 @@ function raitaa_do_checker ($content) {
 
             }
 
-            if(isset($chapter["keyword"][$n]) 
+            if(isset($chapter["keyword"][$n])
                 // && $i !== $chapter["line"][$chapter["number"]]
                  ){
         // $chapter["keyword"] = array_map(function($w) { return explode("-", $w); },
@@ -427,7 +427,7 @@ function raitaa_do_checker ($content) {
 
     }
     //まとめのリストタグが4000文字を超える場合6~8
-    $type = (get_len(strip_tags($content)) > 4000 
+    $type = (get_len(strip_tags($content)) > 4000
         && $norma["abst_list"] < 6 ) || ($norma["abst_list"] < 4) ? "warning":"debug";
     $results[-1]["abst_list"] = array('type' => $type, 'data' => $norma["abst_list"]);
 
@@ -441,10 +441,22 @@ function raitaa_do_checker ($content) {
     // error_log(print_r( get_post($_GET['preview_id'] )->post_title));
     $data = get_post($_GET['preview_id'] );
     $tmp = preg_split("/(　| )+/", $data->post_title);
-    $len = get_len($tmp[count($tmp)-1]);
+    $title = $tmp[count($tmp)-1];
+    $len = get_len($title);
     //タイトルが28~32文字
     $type = ($len < 28 || $len > 32) ? "warning":"debug";
-    $results[-1]["title_len"] = array('type' => $type, 'data' => $tmp[count($tmp)-1]."(".$len."文字)");    
+    $results[-1]["title_len"] = array('type' => $type, 'data' => $title."(".$len."文字)");
+
+
+    if(preg_match("/、|。|「|」|①/u", $title, $_m)){
+        $results[-1]["kanma"] = array("type"=> "warning", "data" =>$_m[0]);
+    }
+    //見出しの?、!が半角か
+    if(preg_match("/？|！|♪/u", $title, $_m)){
+        $results[-1]["zenkaku_kigo"] = array("type"=> "warning", "data" =>$_m[0]);
+    }
+
+
     //ステータスチェック
     $type = !preg_match("/作成中|添削依頼/u", $tmp[0], $_) ? "warning":"debug";
     $results[-1]["title_format"] = array('type' => $type, 'data' => $data->post_title);
@@ -510,7 +522,7 @@ function warning_desc($warning, $val) {
         case "hankaku_kigo":
             $result = sprintf("見出し以外で半角の!や?が使われています△ 【%s】", $val);
             break;
-        
+
         case "ending":
             $result = sprintf("？ ！ 。 ♪ ) 以外の文末です 【%s】△", $val);
             break;
@@ -658,7 +670,7 @@ if( isset($_GET['writer']) ){
 
 /* 校正情報プレビューボタン表示 */
 function writer_add_button() {
-    
+
     global $post;
     // wp-admin/includes/post.phpよりコードを拝借。
     $query_args = array();
