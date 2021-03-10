@@ -16,7 +16,7 @@ function raitaa_do_checker ($content) {
 
     $content = preg_replace( '/<p>|<\/p>/msi','',$content);
 
-    $t = preg_split("/[\n|\r,]+/", $content);
+    $t = preg_split("/[\n|\r]+/", $content);
 
     $chapter = array(
         "number" => -1,
@@ -56,7 +56,9 @@ function raitaa_do_checker ($content) {
     }else{
         $tags = array();
     }
-    $type = (count($tags) !== count($chapter["keyword"][0]["kws"])) ? "warning":"debug";
+    if($chapter["keyword"]){
+        $type = (count($tags) !== count($chapter["keyword"][0]["kws"])) ? "warning":"debug";
+    }
     $results[-1]["tag"] = array('type' => $type, 'data' => implode("-", $tags) . "(". (count($tags)).")");
     //カテゴリー
     $category = array_map(function($tag) { return $tag->name; },get_the_category());
@@ -112,6 +114,13 @@ function raitaa_do_checker ($content) {
         if(preg_match("/[０-９]/u", $t[$i], $matches)){
             $results[$i]["zenkaku_num"] = array("type"=> "warning", "data" =>$t[$i]);
         }
+        //あなたに向けて書く
+        if(preg_match("/人も|人は|方も|方は/u", $t[$i], $matches)){
+            $results[$i]["hito"] = array("type"=> "warning", "data" =>$t[$i]);
+        }
+        if(preg_match("/更に|殆ど|下さい|事は|そう言う|お早う|そんな風に|の方|出来る|恐る恐る|何時か|何処か|何故か|良い|捗る|後で|人達|電話を掛ける|ひと通り|ご免なさい|丁度|経つ|易い|何でも|頂いた|合わせて|行こう|致し|様々|全て|通り|そんな風/u", $t[$i], $matches)){
+            $results[$i]["kinku"] = array("type"=> "warning", "data" =>$matches[0]);
+        }
         // 見出し<h2><h3>か最後まできたらキーワードチェック
         if(preg_match("/(<h2>).*<\/h2>|(<h3>).*<\/h3>/", $t[$i], $matches)
 || $tcount == ($i+1)
@@ -131,6 +140,7 @@ function raitaa_do_checker ($content) {
 
             if(@$matches[1] === "<h2>" || $tcount == ($i+1)){
                 $ret = is_blank($t, $i, -2);
+
                 $results[$i]["blank"] = array("type"=> $ret["type"], "data" => $ret["data"]);
 
                 if($chapter["section"] === 1){
@@ -263,11 +273,16 @@ function raitaa_do_checker ($content) {
                 }
                 //見出し2のキーワードの間に記号!,?,♪が入ってない
                 if(isset($chapter["keyword"][$n]) && preg_match("/{$tmp[0]}(.*){$tmp[1]}(.*){$tmp[2]}/u", $line, $m)){
-                    if( get_len($m[1].$m[2]) > 6  ){
+                    if( count($chapter["keyword"][$n]["kws"]) === 2  ){
+                        $tmp = $m[1];
+                    }else{
+                        $tmp = $m[1].$m[2];
+                    }
+                    if( get_len($tmp) > 6  ){
                         $results[$i]["between_long"] = array("type"=> "warning", "data" =>null);
 
                     }
-                    if(preg_match("/!|\?|♪/u", $m[1].$m[2], $matches)){
+                    if(preg_match("/!|\?|♪|。|、/u", $tmp, $matches)){
                         $results[$i]["between"] = array("type"=> "warning", "data" =>implode($matches, ""));
                     }
                 }
