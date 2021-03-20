@@ -24,7 +24,7 @@ function raitaa_do_checker ($content) {
         "line" => array('-1' => 0),
         "keyword" => null
     );
-    $norma = array("kwcount"=> array(),"strong"=> 0, "color"=> 0 , "abst_list" => 0);
+    $norma = array("kwcount"=> array(),"strong"=> 0, "color"=> 0 , "img"=> 0, "abst_list" => 0);
     $abstract = false;
     $results = array();
     $id = get_the_ID();
@@ -90,6 +90,10 @@ function raitaa_do_checker ($content) {
             continue;
         }
 
+        if(preg_match("/ようです|そうです/u", $t[$i], $matches)){
+            $results[$i]["yodesu"] = array("type"=> "info", "data" =>$t[$i]);
+        }
+
         $line = strip_tags($t[$i]);
 
         //吹き出し内は改行のルールはないですが、行が長くなるのは避けます(lightbulb)
@@ -116,21 +120,21 @@ function raitaa_do_checker ($content) {
         }
         //あなたに向けて書く
         if(preg_match("/人も|人は|方も|方は/u", $t[$i], $matches)){
-            $results[$i]["hito"] = array("type"=> "warning", "data" =>$t[$i]);
+            $results[$i]["hito"] = array("type"=> "info", "data" =>$matches[0]);
         }
         if(preg_match("/更に|殆ど|下さい|事は|そう言う|お早う|そんな風に|の方|出来る|恐る恐る|何時か|何処か|何故か|良い|捗る|後で|人達|電話を掛ける|ひと通り|ご免なさい|丁度|経つ|易い|何でも|頂いた|合わせて|行こう|致し|様々|全て|通り|そんな風/u", $t[$i], $matches)){
-            $results[$i]["kinku"] = array("type"=> "warning", "data" =>$matches[0]);
+            $results[$i]["kinku"] = array("type"=> "info", "data" => $matches[0]);
         }
         // 見出し<h2><h3>か最後まできたらキーワードチェック
         if(preg_match("/(<h2>).*<\/h2>|(<h3>).*<\/h3>/", $t[$i], $matches)
 || $tcount == ($i+1)
     ){
             //見出しに、はつけない
-            if(preg_match("/、|。|「|」|①/u", $line, $_m)){
+            if(preg_match("/、|。|「|」/u", $line, $_m)){
                 $results[$i]["kanma"] = array("type"=> "warning", "data" =>$_m[0]);
             }
             //見出しの?、!が半角か
-            if(preg_match("/？|！|♪/u", $line, $_m)){
+            if(preg_match("/？|！/u", $line, $_m)){
                 $results[$i]["zenkaku_kigo"] = array("type"=> "warning", "data" =>$_m[0]);
             }
 
@@ -165,6 +169,9 @@ function raitaa_do_checker ($content) {
                     $results[$title_line]["no_strong"] = array("type" =>"warning", "data" => $norma["strong"]);
                 }
 
+                if($norma["img"] === 0){
+                    $results[$title_line]["no_img"] = array("type" =>"warning", "data" => $norma["img"]);
+                }
 
                 // error_log(print_r("chap:{$chapter['number']} n:{$n}"));
                 //章終わり。kwチェック
@@ -215,7 +222,7 @@ function raitaa_do_checker ($content) {
                 if($tcount == ($i+1)){
                     continue;
                 }
-                $norma = array("kwcount"=> array(),"strong"=> 0, "color"=> 0 , "abst_list" => 0);
+                $norma = array("kwcount"=> array(),"strong"=> 0, "color"=> 0 , "img"=> 0 , "abst_list" => 0);
                 //直前に空行2行ある
                 if($t[$i-2] !== "&nbsp;"){
                 // error_log(print_r("\n{$t[$i-1]}\n{$t[$i-2]}\n"));
@@ -223,25 +230,6 @@ function raitaa_do_checker ($content) {
                 }
 
                 //localhostの画像を使っていない
-
-                //見出し2(まとめも)の下に画像がある
-                if(preg_match("/src=.+?\"(.*?) \"?/x", $t[$i+1], $matches)){
-                    //画像のサイズが横300形式がjpg
-                    if(substr($matches[0], -4,3) !== "jpg" ){
-                        $results[$i]["img_ext"] = array("type"=> "warning", "data" =>substr($matches[1], 3));
-                    }
-
-                    //横サイズが300
-                    if(preg_match("/width\=\"([0-9]+) /x", $t[$i+1], $matches)){
-                        if($matches[1] !== "300"){
-                            $results[$i]["img_width"] = array("type"=> "warning", "data" =>$matches[1]);
-                        }
-                    }
-
-                }else{
-                    $results[$i]["no_img"] = array("type"=> "warning", "data" =>$line);
-                }
-
 
                 if($line == "まとめ"){
                     $abstract = true;
@@ -341,7 +329,7 @@ function raitaa_do_checker ($content) {
             }
             if($ending_check){
                 //文末に。か？か！か♪が入っている(まとめ、空行、タイトル、テーブル以外)
-                if(!preg_match("/(？|！|。|♪|\)|）)$/u", $line, $matches)){
+                if(!preg_match("/(？|！|。|♪|\)|」|）)$/u", $line, $matches)){
                     //下の行がリストタグ
                     preg_match("/.$/u", $line, $matches);
                     $results[$i]["ending"] = array("type"=> "warning", "data" =>$matches[0]);
@@ -382,13 +370,12 @@ function raitaa_do_checker ($content) {
                 }elseif(($chapter["number"] === -1) && $norma["strong"] > 0){
                     $results[$i]["too_strong"] = array("type"=> "warning", "data" =>$matches[1]);
                 }else{
-                    if(preg_match("/^<strong>.*<\/strong>/u", $t[$i], $matches)){
+                    if(preg_match("/<strong>.*<\/strong>/u", $t[$i], $matches)){
                         //Bタグとcolorタグは一行に修飾。
                         //修飾ノルマクリア
                         $norma["strong"] += 1;
                     }
                 }
-
             }
             if(preg_match("/<span style=\"color:/u", $t[$i], $matches)){
 
@@ -397,7 +384,7 @@ function raitaa_do_checker ($content) {
                     $results[$i]["abst_tag"] = array("type"=> "warning", "data" =>$matches[0]);
                 }else{
                 // if(preg_match("/src=.+?\"(.*?)\\\ /x", $t[$i+1], $matches)){
-                    if(preg_match("/^<span style.*(！|。)<\/span>/u", $t[$i], $matches)){
+                    if(preg_match("/<span style.*(！|。)<\/span>/u", $t[$i], $matches)){
                         //Bタグとcolorタグは一行に修飾。
                         //修飾ノルマクリア
                         $norma["color"] += 1;
@@ -405,6 +392,24 @@ function raitaa_do_checker ($content) {
                 }
 
             }
+
+            //見出し2(まとめも)の下に画像がある
+            if(preg_match("/src=.+?\"(.*?) \"?/x", $t[$i], $matches)){
+                //画像のサイズが横300形式がjpg
+                if(substr($matches[0], -4,3) !== "jpg" ){
+                    $results[$i]["img_ext"] = array("type"=> "warning", "data" =>substr($matches[1], 3));
+                }
+
+                //横サイズが300
+                if(preg_match("/width\=\"([0-9]+) /x", $t[$i+1], $matches)){
+                    if($matches[1] !== "300"){
+                        $results[$i]["img_width"] = array("type"=> "warning", "data" =>$matches[1]);
+                    }
+                }
+                $norma["img"] += 1;
+            }
+
+
 
             if(isset($chapter["keyword"][$n])
                 // && $i !== $chapter["line"][$chapter["number"]]
@@ -487,34 +492,62 @@ function raitaa_do_checker ($content) {
         if(isset($results[$i])){
             if($i === -1){
                 foreach ($results[$i] as $k => $v) {
-                    if($v["type"] == "warning"){
-                        $warning .="<span class='proofreading warning1'>△";
-                    }else{
-                        $warning .="<span class='proofreading debug1'>🌸";
-                    }
+                    $warning .="<span class='proofreading lv_".$v["type"]."'>".level_head($v["type"]);
                     $warning .= warning_desc($k, $v["data"]) ."<br /></span>";
                 }
                 $warning  .= "<p><span class='proofreading-h2'>本文</span></p>";
             }else{
                 foreach ($results[$i] as $k => $v) {
-                    $desc .= "\n";
-                    if($v["type"] === "warning" ){
-                    // if($v["type"] === "warning" || $type === "warning"){
-                        $type = "warning";
-                        $desc .= "△";
-                    }else{
-                        $desc .= "🌸";
+                    if($v["type"] === "warning"){
+                       $type = "warning";
                     }
-                    $desc .= strip_tags(warning_desc($k, $v["data"])) ;
+                    if($v["type"] === "info"){
+                       $type = "info";
+                    }
+
+                    $desc .= ("\n").(level_head($v["type"]))  .(strip_tags(warning_desc($k, $v["data"]))) ;
                 }
-                $kekka = ($type === "warning") ? "△あり":"すべてOK🎉";
-                $warning .="<span class='proofreading-item {$type}1'  title='{$kekka}:{$desc}'>$t[$i]</span><br />";
+                // echo "v:".($v["type"])." type:" .($type)."<br />";
+                $warning .="<span class='proofreading-item lv_".$type."'  title='".level_desc($type).
+                "{$desc}'>$t[$i]</span><br />";
             }
         }else{
             $warning .= $t[$i]."<br />";
         }
     }
     return $warning ;
+}
+
+function level_head($level) {
+    switch ($level) {
+        case 'debug':
+            return "🌸";
+            break;
+        case 'info':
+            return "🧐";
+            break;
+        case 'warning':
+            return "△";
+            break;        
+        default:
+            break;
+    }
+}
+
+function level_desc($level) {
+    switch ($level) {
+        case 'debug':
+            return "すべてOK🎉";
+            break;
+        case 'info':
+            return "確認だけ";
+            break;
+        case 'warning':
+            return "△あり";
+            break;        
+        default:
+            break;
+    }
 }
 
 function warning_desc($warning, $val) {
@@ -530,6 +563,9 @@ function warning_desc($warning, $val) {
             break;
         case "len_max":
             $result = sprintf("タイトルが長過ぎます(20文字前後) 【%s文字】", $val);
+            break;
+        case "len_min":
+            $result = sprintf("タイトルが短すぎます(20文字前後) 【%s文字】", $val);
             break;
         case "bad_blank":
             $result = sprintf("見出しや吹き出しの前以外で改行が入っています 【%s】", $val);
@@ -608,6 +644,15 @@ function warning_desc($warning, $val) {
             break;
         case "no_img":
             $result = sprintf("見出しの下に画像が入っていません</span><br />【%s】", $val);
+            break;
+        case "hito":
+            $result = sprintf("〜な人、ではなくあなたに向けて書く 【%s】", $val);
+            break;
+        case "kinku":
+            $result = sprintf("開いたほうが良い漢字かも 【%s】", $val);
+            break;
+        case "yodesu":
+            $result = sprintf("可能であれば言い切り", $val);
             break;
         case "between":
             $result = sprintf("指定キーワードの間に記号が入っています</span><br />：%s", $val);

@@ -97,22 +97,27 @@
 	background-color: #ffceb0;
 }
 
-.proofreading-result .warning1 {
+.proofreading-result .lv_warning {
 	background-color: #ffccff;
 }
-.proofreading-result .warning1 h2 {
+.proofreading-result .lv_warning h2 {
 	background-color: #cc99ff;
 }
-.proofreading-result .warning1 h3 {
+.proofreading-result .lv_warning h3 {
 	background-color: #ffccff;
 }
 
-.proofreading-result .debug1 {
+.proofreading-result .lv_debug {
 	background-color: #ccffcc;
 }
-.proofreading-result .debug1 h2 {
+.proofreading-result .lv_debug h2 {
 	background-color: #99cc33;
 }
-.proofreading-result .debug1 h3 {
+.proofreading-result .lv_debug h3 {
 	background-color: #ccffcc;
 }
+
+.proofreading-result .lv_info1 {
+	background-color: #ffffe0;
+}
+
