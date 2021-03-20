@@ -169,7 +169,7 @@ function raitaa_do_checker ($content) {
                     $results[$title_line]["no_strong"] = array("type" =>"warning", "data" => $norma["strong"]);
                 }
 
-                if($norma["img"] === 0){
+                if($norma["img"] === 0 && $chapter["number"] !== -1){
                     $results[$title_line]["no_img"] = array("type" =>"warning", "data" => $norma["img"]);
                 }
 
@@ -301,6 +301,21 @@ function raitaa_do_checker ($content) {
                     $ending_check = false;
                 }
             }
+            //見出し2(まとめも)の下に画像がある
+            if(preg_match("/src=.+?\"(.*?) \"?/x", $t[$i], $matches)){
+                //画像のサイズが横300形式がjpg
+                if(substr($matches[0], -4,3) !== "jpg" ){
+                    $results[$i]["img_ext"] = array("type"=> "warning", "data" =>substr($matches[1], 3));
+                }
+
+                //横サイズが300
+                if(preg_match("/width\=\"([0-9]+) /x", $t[$i+1], $matches)){
+                    if($matches[1] !== "300"){
+                        $results[$i]["img_width"] = array("type"=> "warning", "data" =>$matches[1]);
+                    }
+                }
+                $norma["img"] += 1;
+            }
 
             //空行でもない空白の場合(divタグなど)
             if($line == ""){
@@ -392,24 +407,6 @@ function raitaa_do_checker ($content) {
                 }
 
             }
-
-            //見出し2(まとめも)の下に画像がある
-            if(preg_match("/src=.+?\"(.*?) \"?/x", $t[$i], $matches)){
-                //画像のサイズが横300形式がjpg
-                if(substr($matches[0], -4,3) !== "jpg" ){
-                    $results[$i]["img_ext"] = array("type"=> "warning", "data" =>substr($matches[1], 3));
-                }
-
-                //横サイズが300
-                if(preg_match("/width\=\"([0-9]+) /x", $t[$i+1], $matches)){
-                    if($matches[1] !== "300"){
-                        $results[$i]["img_width"] = array("type"=> "warning", "data" =>$matches[1]);
-                    }
-                }
-                $norma["img"] += 1;
-            }
-
-
 
             if(isset($chapter["keyword"][$n])
                 // && $i !== $chapter["line"][$chapter["number"]]
