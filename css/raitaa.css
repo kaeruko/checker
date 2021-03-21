@@ -117,7 +117,13 @@
 	background-color: #ccffcc;
 }
 
-.proofreading-result .lv_info1 {
+.proofreading-result .lv_info {
 	background-color: #ffffe0;
 }
 
+.proofreading-result .lv_info h2 {
+	background-color: #ffffe0;
+}
+.proofreading-result .lv_info h3 {
+	background-color: #ffffe0;
+}

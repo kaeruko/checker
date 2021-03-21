@@ -69,10 +69,8 @@ function raitaa_do_checker ($content) {
     $type = (!$pm) ? "warning":"debug";
     $results[-1]["post_name"] = array('type' => $type, 'data' => $pm);
     $eyecatch = get_singular_eyecatch_image_url();
-    $e = explode("/", $eyecatch);
-    $e = $e[count($e)-1];
-    $type = (!preg_match("/{$pm}/", $e, $m)|| !$pm)  ? "warning":"debug";
-    $results[-1]["eyecatch"] = array('type' => $type, 'data' => $e);
+    $type = (!preg_match("/{$pm}/", basename($eyecatch), $m)|| !$pm)  ? "warning":"debug";
+    $results[-1]["eyecatch"] = array('type' => $type, 'data' => basename($eyecatch));
 
     $n = 0;
     $intro_count = 0;
@@ -91,7 +89,7 @@ function raitaa_do_checker ($content) {
         }
 
         if(preg_match("/ようです|そうです/u", $t[$i], $matches)){
-            $results[$i]["yodesu"] = array("type"=> "info", "data" =>$t[$i]);
+            $results[$i]["yodesu"] = array("type"=> "info", "data" =>$matches[0]);
         }
 
         $line = strip_tags($t[$i]);
@@ -120,7 +118,7 @@ function raitaa_do_checker ($content) {
         }
         //あなたに向けて書く
         if(preg_match("/人も|人は|方も|方は/u", $t[$i], $matches)){
-            $results[$i]["hito"] = array("type"=> "info", "data" =>$matches[0]);
+            $results[$i]["hito"] = array("type"=> "info", "data" => $matches[0]);
         }
         if(preg_match("/更に|殆ど|下さい|事は|そう言う|お早う|そんな風に|の方|出来る|恐る恐る|何時か|何処か|何故か|良い|捗る|後で|人達|電話を掛ける|ひと通り|ご免なさい|丁度|経つ|易い|何でも|頂いた|合わせて|行こう|致し|様々|全て|通り|そんな風/u", $t[$i], $matches)){
             $results[$i]["kinku"] = array("type"=> "info", "data" => $matches[0]);
@@ -302,19 +300,25 @@ function raitaa_do_checker ($content) {
                 }
             }
             //見出し2(まとめも)の下に画像がある
-            if(preg_match("/src=.+?\"(.*?) \"?/x", $t[$i], $matches)){
-                //画像のサイズが横300形式がjpg
-                if(substr($matches[0], -4,3) !== "jpg" ){
-                    $results[$i]["img_ext"] = array("type"=> "warning", "data" =>substr($matches[1], 3));
+            if(preg_match("/src=.+?\".*? \"?/x", $t[$i], $matches)){
+                $filename = basename($matches[0]);
+                //ノルマの画像か
+                if(preg_match("/{$pm}/", $filename, $m)){
+                    $norma["img"] += 1;
+                    //画像のサイズが横300形式がjpg
+                    if(substr($filename, -4,3) !== "jpg" ){
+                        $results[$i]["img_ext"] = array("type"=> "warning", "data" =>substr($matches[1], 3));
+                    }
+
+                    //横サイズが300
+                    if(preg_match("/width\=\"([0-9]+) /x", $t[$i], $matches)){
+                        if($matches[1] !== "300"){
+                            $results[$i]["img_width"] = array("type"=> "warning", "data" =>$matches[1]);
+                        }
+                    }
+
                 }
 
-                //横サイズが300
-                if(preg_match("/width\=\"([0-9]+) /x", $t[$i+1], $matches)){
-                    if($matches[1] !== "300"){
-                        $results[$i]["img_width"] = array("type"=> "warning", "data" =>$matches[1]);
-                    }
-                }
-                $norma["img"] += 1;
             }
 
             //空行でもない空白の場合(divタグなど)
@@ -399,7 +403,7 @@ function raitaa_do_checker ($content) {
                     $results[$i]["abst_tag"] = array("type"=> "warning", "data" =>$matches[0]);
                 }else{
                 // if(preg_match("/src=.+?\"(.*?)\\\ /x", $t[$i+1], $matches)){
-                    if(preg_match("/<span style.*(！|。)<\/span>/u", $t[$i], $matches)){
+                    if(preg_match("/<span style.*(！|。|？)<\/span>/u", $t[$i], $matches)){
                         //Bタグとcolorタグは一行に修飾。
                         //修飾ノルマクリア
                         $norma["color"] += 1;
@@ -640,7 +644,7 @@ function warning_desc($warning, $val) {
             $result = sprintf("見出しに記号が入っています</span><br />【%s】", $val);
             break;
         case "no_img":
-            $result = sprintf("見出しの下に画像が入っていません</span><br />【%s】", $val);
+            $result = sprintf("画像が入っていないか画像名が違います</span><br />【%s】", $val);
             break;
         case "hito":
             $result = sprintf("〜な人、ではなくあなたに向けて書く 【%s】", $val);
@@ -649,7 +653,7 @@ function warning_desc($warning, $val) {
             $result = sprintf("開いたほうが良い漢字かも 【%s】", $val);
             break;
         case "yodesu":
-            $result = sprintf("可能であれば言い切り", $val);
+            $result = sprintf("可能であれば言い切り 【%s】", $val);
             break;
         case "between":
             $result = sprintf("指定キーワードの間に記号が入っています</span><br />：%s", $val);
@@ -729,16 +733,19 @@ if( isset($_GET['writer']) ){
 function writer_add_button() {
 
     global $post;
-    // wp-admin/includes/post.phpよりコードを拝借。
+    global $current_user;
+
+// var_dump(get_currentuserinfo()->user_nicename);
+// var_dump($GLOBALS['current_screen']->in_admin( $user));
+//$user = $current_user->user_level
     $query_args = array();
     if ( get_post_type_object( $post->post_type )->public ) {
-        if ( 'publish' == $post->post_status || $user->ID != $post->post_author ) {
-            // Latest content is in autosave
-            $nonce = wp_create_nonce( 'post_preview_' . $post->ID );
-            $query_args['preview_id'] = $post->ID;
-            $query_args['preview_nonce'] = $nonce;
-        }
-    }
+        if(get_currentuserinfo()->user_nicename === "mail5d98" || $current_user->user_level >5){
+            if ( 'publish' == $post->post_status || $user->ID != $post->post_author ) {
+                // Latest content is in autosave
+                $nonce = wp_create_nonce( 'post_preview_' . $post->ID );
+                $query_args['preview_id'] = $post->ID;
+                $query_args['preview_nonce'] = $nonce;
     //判別用にクリエストリング「proofreading=yes」を追加
     $query_args['preview'] = 'true';
     $query_args['writer'] = 'yes';
@@ -756,6 +763,10 @@ function writer_add_button() {
     }(jQuery));
 </script>
 <?php
+            }
+        }
+    }
+
 }
 
 function add_kw_fields() {
