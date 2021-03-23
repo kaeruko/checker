@@ -107,6 +107,10 @@
 	background-color: #ffccff;
 }
 
+.proofreading-result .lv_warning li {
+	background-color: #ffccff;
+}
+
 .proofreading-result .lv_debug {
 	background-color: #ccffcc;
 }

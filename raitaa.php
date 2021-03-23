@@ -30,12 +30,14 @@ function raitaa_do_checker ($content) {
     $id = get_the_ID();
     $type = "";
     $raitaa_keyword = get_post_meta($id, 'raitaa_keyword', true);
+
     if($raitaa_keyword){
         $chapter["keyword"] = array_map(function($w) {
             $w2 = explode(",", $w);
             return array("kws"=>explode(",", $w), "patt" => "/(".implode(")|(", $w2).")/u"); },
         explode("-", $raitaa_keyword));
     }
+
     //メタディスクリプション
     $the_page_meta_description = (get_post_meta($id, 'the_page_meta_description', true));
     $tmp = get_len($the_page_meta_description);
@@ -121,6 +123,7 @@ function raitaa_do_checker ($content) {
             $results[$i]["hito"] = array("type"=> "info", "data" => $matches[0]);
         }
         if(preg_match("/更に|殆ど|下さい|事は|そう言う|お早う|そんな風に|の方|出来る|恐る恐る|何時か|何処か|何故か|良い|捗る|後で|人達|電話を掛ける|ひと通り|ご免なさい|丁度|経つ|易い|何でも|頂いた|合わせて|行こう|致し|様々|全て|通り|そんな風/u", $t[$i], $matches)){
+// var_dump(htmlspecialchars( $t[$i]));
             $results[$i]["kinku"] = array("type"=> "info", "data" => $matches[0]);
         }
         // 見出し<h2><h3>か最後まできたらキーワードチェック
@@ -336,6 +339,7 @@ function raitaa_do_checker ($content) {
 
             //リストタグの場合は字数や文末をチェックしない
             if($len_check && !preg_match("/<li>|<\/li>/u", $t[$i], $matches)){
+                $ending_check = false;
                 //改行までの文字列がスマホで2行~4行に収まる
                 $l = get_len($line);
                 // error_log(print_r("get_len:{$line}\n"));
@@ -362,11 +366,18 @@ function raitaa_do_checker ($content) {
                 }else{
                     //<div class="blank-box
                     //まとめ以外の箇条書きの場合上に文章があること
+                    //箇条書きの場合は間に。を入れない
+                    if(preg_match("/。/u", $t[$i], $matches)){
+                        $results[$i]["kuten"] = array("type"=> "warning", "data" =>$matches[0]);
+                    }
                     if(preg_match("/^<h2>|^<h3>/u", $t[$i-1], $matches)){
 
                     }
                 }
             }
+
+
+
 
             //shift+enter
             if(preg_match("/^<div>.*<\/div>$/u", $t[$i], $matches)){
@@ -375,6 +386,11 @@ function raitaa_do_checker ($content) {
             //文頭にですが
             if(preg_match("/^ですが/u", $line, $matches)){
                 $results[$i]["desuga"] = array("type"=> "warning", "data" =>$matches[0]);
+            }
+
+            //文頭になので
+            if(preg_match("/^なので/u", $line, $matches)){
+                $results[$i]["nanode"] = array("type"=> "warning", "data" =>$matches[0]);
             }
 
             //文中で!?は使わない
@@ -403,7 +419,7 @@ function raitaa_do_checker ($content) {
                     $results[$i]["abst_tag"] = array("type"=> "warning", "data" =>$matches[0]);
                 }else{
                 // if(preg_match("/src=.+?\"(.*?)\\\ /x", $t[$i+1], $matches)){
-                    if(preg_match("/<span style.*(！|。|？)<\/span>/u", $t[$i], $matches)){
+                    if(preg_match("/<span style.*(！|。|？|」)<\/span>/u", $t[$i], $matches)){
                         //Bタグとcolorタグは一行に修飾。
                         //修飾ノルマクリア
                         $norma["color"] += 1;
@@ -438,8 +454,6 @@ function raitaa_do_checker ($content) {
 
         //文章の途中にリンクを入れない
         //テーブルタグを使う場合カラム名は行名はstrongを入れる、中央揃え
-        //キーワード入れ込みが不足してる場合、説明
-        //「ネズミにはホウ酸団子!?」ネズミにはホウ酸団子がいいと言われますよね。本当にネズミにはホウ酸団子がよいのでしょうか？ホウ酸団子ってなに？ネズミいいね
 
         //皆さんはダメ
         //autokanaで。中身を見れば英字になってるところあるはず画像名生成　zuでもduでもでるのか
@@ -509,8 +523,7 @@ function raitaa_do_checker ($content) {
                     $desc .= ("\n").(level_head($v["type"]))  .(strip_tags(warning_desc($k, $v["data"]))) ;
                 }
                 // echo "v:".($v["type"])." type:" .($type)."<br />";
-                $warning .="<span class='proofreading-item lv_".$type."'  title='".level_desc($type).
-                "{$desc}'>$t[$i]</span><br />";
+                $warning .="<span class='proofreading-item lv_".$type."'  title='".level_desc($type)."{$desc}'>$t[$i]</span><br />";
             }
         }else{
             $warning .= $t[$i]."<br />";
@@ -667,6 +680,12 @@ function warning_desc($warning, $val) {
         case "localhost":
             $result = sprintf("ローカルの画像が使われています：<br />%s", $val);
             break;
+        case "kuten":
+            $result = sprintf("箇条書きに句点が使われています：<br />%s", $val);
+            break;
+        case "nanode":
+            $result = sprintf("「なので」は使わない：<br />%s", $val);
+            break;
         default:
             $result = sprintf("{$warning} %s", $val);
             break;
@@ -769,27 +788,107 @@ function writer_add_button() {
 
 }
 
-function add_kw_fields() {
-    add_meta_box( 'custom_setting', '指定キーワード', 'insert_kw_fields', 'post', 'normal');
-}
 
-function insert_kw_fields() {
-    global $post;
-    echo '<input type="text" name="raitaa_keyword" value="'.get_post_meta($post->ID, 'raitaa_keyword', true).'" size="50" />書き方：<br /><p class="howto">見出し2-1のキーワード1-見出し2-1のキーワード2-見出し2-1のキーワード3,見出し2-2のキーワード1-見出し2-2のキーワード2-見出し2-2のキーワード3と書いてください<br />
-    例:パフ-洗う-頻度,パフ-洗う-ダイソー,パフ-洗う-石鹸</p>';
-}
-
-
-function save_kw_fields( $post_id ) {
-    if(get_post_meta($post_id, "raitaa_keyword",true) == ""){
-        add_post_meta($post_id, "raitaa_keyword", $_POST['raitaa_keyword'], true);
-    }elseif(!empty($_POST['raitaa_keyword'])){
-        update_post_meta($post_id, 'raitaa_keyword', $_POST['raitaa_keyword'] );
-    }
-}
 register_setting( 'weiting_setting', 'weiting_setting', 'sanitize' );
 
 add_action( 'admin_footer-post-new.php', 'writer_add_button' );
 add_action( 'admin_footer-post.php', 'writer_add_button' );
-add_action('admin_menu', 'add_kw_fields');
-add_action('save_post', 'save_kw_fields');
+
+
+function raitaa_keyword_meta_box() {
+
+    add_meta_box(
+        'raitaa-keyword',
+        __( '指定キーワード', 'sitepoint' ),
+        'raitaa_keyword_meta_box_callback',
+        'post'
+    );
+}
+
+add_action( 'add_meta_boxes', 'raitaa_keyword_meta_box' );
+
+function raitaa_keyword() {
+
+    $args = array(
+        'label'                => '指定キーワード',
+        'public'               => true,
+        'register_meta_box_cb' => 'raitaa_keyword_meta_box'
+    );
+
+    register_post_type( 'raitaa_keyword', $args );
+}
+
+add_action( 'init', 'raitaa_keyword' );
+
+function raitaa_keyword_meta_box_callback( $post ) {
+
+    // Add a nonce field so we can check for it later.
+    wp_nonce_field( 'raitaa_keyword_nonce', 'raitaa_keyword_nonce' );
+
+    $value = get_post_meta( $post->ID, 'raitaa_keyword', true );
+
+    echo '<input type="text" id="raitaa_keyword" name="raitaa_keyword" value="'.esc_attr($value).'" size="50" />';
+
+    echo '書き方：<br /><p class="howto">見出し2-1のキーワード1-見出し2-1のキーワード2-見出し2-1のキーワード3,見出し2-2のキーワード1-見出し2-2のキーワード2-見出し2-2のキーワード3と書いてください<br />
+    例:パフ-洗う-頻度,パフ-洗う-ダイソー,パフ-洗う-石鹸</p>';
+
+}
+function save_raitaa_keyword_meta_box_data( $post_id ) {
+
+    // Check if our nonce is set.
+    if ( ! isset( $_POST['raitaa_keyword_nonce'] ) ) {
+        return;
+    }
+
+    // Verify that the nonce is valid.
+    if ( ! wp_verify_nonce( $_POST['raitaa_keyword_nonce'], 'raitaa_keyword_nonce' ) ) {
+        return;
+    }
+
+    // If this is an autosave, our form has not been submitted, so we don't want to do anything.
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+        return;
+    }
+
+    // Check the user's permissions.
+    if ( isset( $_POST['post_type'] ) && 'page' == $_POST['post_type'] ) {
+
+        if ( ! current_user_can( 'edit_page', $post_id ) ) {
+            return;
+        }
+
+    }
+    else {
+
+        if ( ! current_user_can( 'edit_post', $post_id ) ) {
+            return;
+        }
+    }
+
+    /* OK, it's safe for us to save the data now. */
+    // Make sure that it is set.
+    if ( ! isset( $_POST['raitaa_keyword'] ) ) {
+        return;
+    }
+    // Sanitize user input.
+    $my_data = sanitize_text_field( $_POST['raitaa_keyword'] );
+    // Update the meta field in the database.
+    update_post_meta( $post_id, 'raitaa_keyword', $my_data );
+}
+
+add_action( 'save_post', 'save_raitaa_keyword_meta_box_data' );
+
+function raitaa_keyword_before_post( $content ) {
+
+    global $post;
+
+    // retrieve the global notice for the current post
+    $raitaa_keyword = esc_attr( get_post_meta( $post->ID, 'raitaa_keyword', true ) );
+
+    $notice = "<div class='sp_raitaa_keyword'>$raitaa_keyword</div>";
+
+    return $notice . $content;
+
+}
+
+// add_filter( 'the_content', 'raitaa_keyword_before_post' );
