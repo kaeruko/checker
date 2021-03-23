@@ -61,18 +61,18 @@ function raitaa_do_checker ($content) {
     if($chapter["keyword"]){
         $type = (count($tags) !== count($chapter["keyword"][0]["kws"])) ? "warning":"debug";
     }
-    $results[-1]["tag"] = array('type' => $type, 'data' => implode("-", $tags) . "(". (count($tags)).")");
+    // $results[-1]["tag"] = array('type' => $type, 'data' => implode("-", $tags) . "(". (count($tags)).")");
     //カテゴリー
     $category = array_map(function($tag) { return $tag->name; },get_the_category());
     $type = (count($category) !== 1) ? "warning":"debug";
-    $results[-1]["category"] = array('type' => $type, 'data' =>(implode("-", $category)));
+    // $results[-1]["category"] = array('type' => $type, 'data' =>(implode("-", $category)));
     //パーマリンク
     $pm = ( get_post_field( 'post_name', get_post() ));
     $type = (!$pm) ? "warning":"debug";
-    $results[-1]["post_name"] = array('type' => $type, 'data' => $pm);
+    // $results[-1]["post_name"] = array('type' => $type, 'data' => $pm);
     $eyecatch = get_singular_eyecatch_image_url();
     $type = (!preg_match("/{$pm}/", basename($eyecatch), $m)|| !$pm)  ? "warning":"debug";
-    $results[-1]["eyecatch"] = array('type' => $type, 'data' => basename($eyecatch));
+    // $results[-1]["eyecatch"] = array('type' => $type, 'data' => basename($eyecatch));
 
     $n = 0;
     $intro_count = 0;
