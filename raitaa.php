@@ -545,7 +545,6 @@ $warning  .= "
 https://related-keywords.com/result/suggest?q={$query}
 https://rakko.tools/tools/3/
 https://ccd.cloud/
-https://docs.google.com/spreadsheets/d/1Am84Wf2HDFCkfeXNKn3kF4gwfwtquAF3sNkFdTlawfk/edit#gid=112081895
 ";
 
     return $warning ;
