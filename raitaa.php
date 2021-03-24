@@ -61,18 +61,18 @@ function raitaa_do_checker ($content) {
     if($chapter["keyword"]){
         $type = (count($tags) !== count($chapter["keyword"][0]["kws"])) ? "warning":"debug";
     }
-    // $results[-1]["tag"] = array('type' => $type, 'data' => implode("-", $tags) . "(". (count($tags)).")");
+    $results[-1]["tag"] = array('type' => $type, 'data' => implode("-", $tags) . "(". (count($tags)).")");
     //カテゴリー
     $category = array_map(function($tag) { return $tag->name; },get_the_category());
     $type = (count($category) !== 1) ? "warning":"debug";
-    // $results[-1]["category"] = array('type' => $type, 'data' =>(implode("-", $category)));
+    $results[-1]["category"] = array('type' => $type, 'data' =>(implode("-", $category)));
     //パーマリンク
     $pm = ( get_post_field( 'post_name', get_post() ));
     $type = (!$pm) ? "warning":"debug";
-    // $results[-1]["post_name"] = array('type' => $type, 'data' => $pm);
+    $results[-1]["post_name"] = array('type' => $type, 'data' => $pm);
     $eyecatch = get_singular_eyecatch_image_url();
     $type = (!preg_match("/{$pm}/", basename($eyecatch), $m)|| !$pm)  ? "warning":"debug";
-    // $results[-1]["eyecatch"] = array('type' => $type, 'data' => basename($eyecatch));
+    $results[-1]["eyecatch"] = array('type' => $type, 'data' => basename($eyecatch));
 
     $n = 0;
     $intro_count = 0;
@@ -116,7 +116,7 @@ function raitaa_do_checker ($content) {
         }
         //数字は全て半角
         if(preg_match("/[０-９]/u", $t[$i], $matches)){
-            $results[$i]["zenkaku_num"] = array("type"=> "warning", "data" =>$t[$i]);
+            $results[$i]["zenkaku_num"] = array("type"=> "warning", "data" =>$matches[$i]);
         }
         //あなたに向けて書く
         if(preg_match("/人も|人は|方も|方は/u", $t[$i], $matches)){
@@ -438,8 +438,8 @@ function raitaa_do_checker ($content) {
                     foreach ($matches[0] as $k => $v) {
                         $norma["kwcount"][$v] += 1;
                         if(!preg_match("/(<h2>).*<\/h2>|(<h3>).*<\/h3>/", $t[$i], $matches)){
-                            $t[$i] = preg_replace("/{$v}/","<span class='proofreading-item color".(array_search($v, $chapter["keyword"][$n]["kws"])+1)."'
-                                title=". $norma["kwcount"][$v]. "回
+                            $t[$i] = preg_replace("/{$v}?/","<span class='proofreading-item color".(array_search($v, $chapter["keyword"][$n]["kws"])+1)."'
+                                title=この行までで全". $norma['kwcount'][$v]. "回
                                 '>{$v}</span>", $t[$i]);
 
                         }
@@ -496,10 +496,11 @@ function raitaa_do_checker ($content) {
     $type = !preg_match("/作成中|添削依頼/u", $tmp[0], $_) ? "warning":"debug";
     $results[-1]["title_format"] = array('type' => $type, 'data' => $data->post_title);
 
-
     $warning  = "<div class='proofreading-result'>
 <div class='proofreading-summary'>
 <p><span class='proofreading-h2'>サマリー</span></p>";
+    $type = !($chapter["keyword"][0]["kws"]) ? "warning":"debug";
+    $results[-1]["keyword"] = array('type' => "debug", 'data' => (implode($chapter["keyword"][0]["kws"], " ") ));
 
     for ($i=-1; $i < count($t)+1; $i++) {
         $type = "debug";
@@ -507,12 +508,19 @@ function raitaa_do_checker ($content) {
         if(isset($results[$i])){
             if($i === -1){
                 foreach ($results[$i] as $k => $v) {
+                    if(!check_display($k)){
+                        continue;
+                    }
                     $warning .="<span class='proofreading lv_".$v["type"]."'>".level_head($v["type"]);
                     $warning .= warning_desc($k, $v["data"]) ."<br /></span>";
                 }
                 $warning  .= "<p><span class='proofreading-h2'>本文</span></p>";
             }else{
                 foreach ($results[$i] as $k => $v) {
+                    if(!check_display($k)){
+                        continue;
+                    }
+
                     if($v["type"] === "warning"){
                        $type = "warning";
                     }
@@ -529,7 +537,40 @@ function raitaa_do_checker ($content) {
             $warning .= $t[$i]."<br />";
         }
     }
+$reduced_kws = $chapter["keyword"][0]["kws"];
+array_pop($reduced_kws);
+$query =  urlencode(implode($reduced_kws, " ") ) ;
+$warning  .= "
+https://related-keywords.com/result/suggest?q={$query}
+https://rakko.tools/tools/3/
+https://ccd.cloud/
+https://docs.google.com/spreadsheets/d/1Am84Wf2HDFCkfeXNKn3kF4gwfwtquAF3sNkFdTlawfk/edit#gid=112081895
+";
+
     return $warning ;
+}
+
+function check_display($warning) {
+    global $current_user;
+    if($_SERVER["HTTP_HOST"] === "localhost:8080" || get_currentuserinfo()->user_nicename === "mail5d98"){
+        return true;
+    }
+    switch ($warning) {
+        case "h2_len":
+        case "len_max":
+        case "len_min":
+        case "metakw":
+        case "tag":
+        case "category":
+        case "title_format":
+        case "abst_list":
+        case "post_name":
+            return false;
+            break;
+        default:
+            return true;
+            break;
+    }
 }
 
 function level_head($level) {
@@ -569,6 +610,9 @@ function warning_desc($warning, $val) {
         $val = strip_tags($val);
     }
     switch ($warning) {
+        case "keyword":
+            $result = sprintf("指定キーワード【%s】", $val);
+            break;
         case "blank":
             $result = sprintf("見出し前の改行(見出し2は2行,3なら1行)【%s行】", abs($val));
             break;
@@ -587,7 +631,6 @@ function warning_desc($warning, $val) {
         case "hankaku_kigo":
             $result = sprintf("見出し以外で半角の!や?が使われています△ 【%s】", $val);
             break;
-
         case "ending":
             $result = sprintf("？ ！ 。 ♪ ) 以外の文末です 【%s】△", $val);
             break;
@@ -620,6 +663,9 @@ function warning_desc($warning, $val) {
         case "category":
             $result = sprintf("カテゴリー(1つ) </span><br />%s", $val);
             break;
+        case "zenkaku_num":
+            $result = sprintf("数字が全て半角 </span><br />【%s】", $val);
+            break;
         case "chap_no":
             $result = sprintf("見出し2の数(4以上) </span><br />%s", $val);
             break;
@@ -648,10 +694,10 @@ function warning_desc($warning, $val) {
             $result = sprintf("記事の文字数 (こぴらん数え上げ)</span><br />%s文字数", $val);
             break;
         case "too_strong":
-            $result = sprintf("導入文ではBタグは1つのみ</span><br />%s", $val);
+            $result = sprintf("導入文ではstrongタグは1つのみ</span><br />%s", $val);
             break;
         case "no_strong":
-            $result = sprintf("Bタグがありません</span><br />%s", $val);
+            $result = sprintf("strongタグがありません</span><br />%s", $val);
             break;
         case "kanma":
             $result = sprintf("見出しに記号が入っています</span><br />【%s】", $val);
@@ -765,11 +811,11 @@ function writer_add_button() {
                 $nonce = wp_create_nonce( 'post_preview_' . $post->ID );
                 $query_args['preview_id'] = $post->ID;
                 $query_args['preview_nonce'] = $nonce;
-    //判別用にクリエストリング「proofreading=yes」を追加
-    $query_args['preview'] = 'true';
-    $query_args['writer'] = 'yes';
+                //判別用にクリエストリング「proofreading=yes」を追加
+                $query_args['preview'] = 'true';
+                $query_args['writer'] = 'yes';
 
-    $url = html_entity_decode(esc_url(add_query_arg($query_args, get_permalink($page->ID))));
+                $url = html_entity_decode(esc_url(add_query_arg($query_args, get_permalink($page->ID))));
 ?>
 <script>
     (function($) {
@@ -787,7 +833,6 @@ function writer_add_button() {
     }
 
 }
-
 
 register_setting( 'weiting_setting', 'weiting_setting', 'sanitize' );
 
@@ -826,11 +871,9 @@ function raitaa_keyword_meta_box_callback( $post ) {
     wp_nonce_field( 'raitaa_keyword_nonce', 'raitaa_keyword_nonce' );
 
     $value = get_post_meta( $post->ID, 'raitaa_keyword', true );
-
     echo '<input type="text" id="raitaa_keyword" name="raitaa_keyword" value="'.esc_attr($value).'" size="50" />';
-
-    echo '書き方：<br /><p class="howto">見出し2-1のキーワード1-見出し2-1のキーワード2-見出し2-1のキーワード3,見出し2-2のキーワード1-見出し2-2のキーワード2-見出し2-2のキーワード3と書いてください<br />
-    例:パフ-洗う-頻度,パフ-洗う-ダイソー,パフ-洗う-石鹸</p>';
+    echo '書き方：<br /><p class="howto">見出し2-1のキーワード1,見出し2-1のキーワード2,見出し2-1のキーワード3-見出し2-2のキーワード1,見出し2-2のキーワード2,見出し2-2のキーワード3と書いてください<br />
+    例:パフ,洗う,頻度-パフ,洗う,ダイソー-パフ,洗う,石鹸</p>';
 
 }
 function save_raitaa_keyword_meta_box_data( $post_id ) {
