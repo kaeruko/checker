@@ -559,7 +559,6 @@ function check_display($warning) {
         case "h2_len":
         case "len_max":
         case "len_min":
-        case "metakw":
         case "tag":
         case "category":
         case "title_format":
