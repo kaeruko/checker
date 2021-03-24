@@ -49,7 +49,8 @@ function raitaa_do_checker ($content) {
         $metakw = explode(",", $metakw);
         $type = (count($metakw) < 5) ? "warning":"debug";
         $results[-1]["metakw"] = array('type' => $type, 'data' => (implode("-", $metakw))."(".(count($metakw)).")" );
-
+    }else{
+        $results[-1]["metakw"] = array('type' => "warning", 'data' => null );        
     }
     //メタタグ
     $tags = get_the_tags();
