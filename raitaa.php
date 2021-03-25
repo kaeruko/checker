@@ -1,8 +1,8 @@
 <?php
 /*
-Plugin Name: raitaa
+Plugin Name: ニーズカフェチェッカー
 Plugin URI:
-Description: WEBライティングの記事をチェックします
+Description: ニーズカフェで使われる校正用プラグイン
 Author: よきな
 Version: 1.0.0
 Author URI:
@@ -565,6 +565,10 @@ function check_display($warning) {
         case "hito":
         case "kinku":
         case "yodesu":
+        case "kanma":
+        case "keyword":
+        case "ending":
+        case "too_strong":
             return false;
             break;
         default:
@@ -838,9 +842,20 @@ echo $url
 function writer_add_button_columns($columns) {
     global $post;
     global $current_user;
-// var_dump(get_currentuserinfo()->user_nicename);
-// var_dump($GLOBALS['current_screen']->in_admin( $user));
-//$user = $current_user->user_level
+    if(get_currentuserinfo()->user_nicename !== "mail5d98" && get_currentuserinfo()->user_nicename !== "wp"){
+        return $columns;
+    }
+    $columns['raitaa_check'] = "仮添削";
+    return $columns;
+}
+
+
+function add_column_value ($column_name, $post_ID) {
+    if($column_name !== "raitaa_check"){
+        return;
+    }
+    global $post;
+    global $current_user;
     $query_args = array();
     if ( get_post_type_object( $post->post_type )->public ) {
         if(get_currentuserinfo()->user_nicename === "mail5d98" || $current_user->user_level >5){
@@ -854,34 +869,23 @@ function writer_add_button_columns($columns) {
                 $query_args['writer'] = 'yes';
 
                 $url = html_entity_decode(esc_url(add_query_arg($query_args, get_permalink($page->ID))));
-                $columns['subtitle'] = $url;
+                echo "<a href=".$url.">添削</a>";
 
             }
         }
     }
+
 }
+add_action( 'manage_posts_custom_column', 'add_column_value', 10, 2 );
+
+
 register_setting( 'weiting_setting', 'weiting_setting', 'sanitize' );
 
 add_action( 'admin_footer-post-new.php', 'writer_add_button' );
 add_action( 'admin_footer-post.php', 'writer_add_button' );
-// add_action('manage_posts_columns', 'writer_add_button_columns' );
+add_action('manage_posts_columns', 'writer_add_button_columns' );
 
-add_action( 'admin_menu', 'my_plugin_menu' );
 
-/** ステップ1 */
-function my_plugin_menu() {
-    add_options_page( 'My Plugin Options', 'My Plugin', 'manage_options', 'my-unique-identifier', 'my_plugin_options' );
-}
-
-/** ステップ3 */
-function my_plugin_options() {
-    if ( !current_user_can( 'manage_options' ) )  {
-        wp_die( __( 'You do not have sufficient permissions to access this page.' ) );
-    }
-    echo '<div class="wrap">';
-    echo '<p>オプション用のフォームをここに表示する。</p>';
-    echo '</div>';
-}
 function raitaa_keyword_meta_box() {
 
     add_meta_box(
