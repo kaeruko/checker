@@ -533,8 +533,7 @@ function raitaa_do_checker ($content) {
     $type = !($chapter["keyword"][0]["kws"]) ? "warning":"debug";
     if($chapter["keyword"]){
         $results[-1]["keyword"] = array('type' => "debug", 'data' => (implode($chapter["keyword"][0]["kws"], " ") ));
-        $reduced_kws = $chapter["keyword"][0]["kws"];
-        array_pop($reduced_kws);
+        $reduced_kws = array($chapter["keyword"][0]["kws"][0],$chapter["keyword"][0]["kws"][1]);
         $query =  urlencode(implode($reduced_kws, " ") ) ;
         $warning  .= "
 https://related-keywords.com/result/suggest?q={$query}
