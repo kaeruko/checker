@@ -41,13 +41,13 @@ function raitaa_do_checker ($content) {
     //メタディスクリプション
     $the_page_meta_description = (get_post_meta($id, 'the_page_meta_description', true));
     $tmp = get_len($the_page_meta_description);
-    $type = ($tmp > 120 || $tmp < 100) ? "warning":"debug";
+    $type = ($tmp > 120 || $tmp < 115) ? "warning":"debug";
     $results[-1]["meta_desc"] = array('type' => $type, 'data' => "{$the_page_meta_description}({$tmp}文字)");
     //メタキーワード
     $metakw = get_post_meta($id, 'the_page_meta_keywords', true);
     if($metakw){
         $metakw = explode(",", $metakw);
-        $type = (count($metakw) < 5) ? "warning":"debug";
+        $type = (count($metakw) < 4) ? "warning":"debug";
         $results[-1]["metakw"] = array('type' => $type, 'data' => (implode("-", $metakw))."(".(count($metakw)).")" );
     }else{
         $results[-1]["metakw"] = array('type' => "warning", 'data' => null );        
@@ -140,9 +140,6 @@ function raitaa_do_checker ($content) {
                 $results[$i]["zenkaku_kigo"] = array("type"=> "warning", "data" =>$_m[0]);
             }
 
-            if($t[$i-1] !== "&nbsp;"){
-                // $results[$i]["no_blank"] = array("type"=> "warning", "data" =>substr($line, 0,5));
-            }
 
             if(@$matches[1] === "<h2>" || $tcount == ($i+1)){
                 $ret = is_blank($t, $i, -2);
@@ -156,7 +153,7 @@ function raitaa_do_checker ($content) {
                 // error_log(print_r("intro_count:{$intro_count}"));
                 if($chapter["number"] === -1 ){
                     $intro_count -=0.5;
-                    $type = ($intro_count < 300 || $intro_count > 350) ? "warning":"debug";
+                    $type = ($intro_count < 250 || $intro_count > 350) ? "warning":"debug";
                     $results[-1]["intro_count"] = array("type" => $type, "data"=>$intro_count);
 
                 }
@@ -225,11 +222,6 @@ function raitaa_do_checker ($content) {
                     continue;
                 }
                 $norma = array("kwcount"=> array(),"strong"=> 0, "color"=> 0 , "img"=> 0 , "abst_list" => 0);
-                //直前に空行2行ある
-                if($t[$i-2] !== "&nbsp;"){
-                // error_log(print_r("\n{$t[$i-1]}\n{$t[$i-2]}\n"));
-                    // $results[$i]["no_blank"] = array("type"=> "warning", "data" =>$t[$i-2]);
-                }
 
                 //localhostの画像を使っていない
 
@@ -262,14 +254,14 @@ function raitaa_do_checker ($content) {
                     }
                 }
                 //見出し2のキーワードの間に記号!,?,♪が入ってない
-                if(isset($chapter["keyword"][$n]) && preg_match("/{$tmp[0]}(.*){$tmp[1]}(.*){$tmp[2]}/u", $line, $m)){
+                if(isset($chapter["keyword"][$n]) && preg_match("/{$tmp[0]}(.*?){$tmp[1]}(.*?){$tmp[2]}/u", $line, $m)){
                     if( count($chapter["keyword"][$n]["kws"]) === 2  ){
                         $tmp = $m[1];
                     }else{
                         $tmp = $m[1].$m[2];
                     }
                     if( get_len($tmp) > 6  ){
-                        $results[$i]["between_long"] = array("type"=> "warning", "data" =>null);
+                        $results[$i]["between_long"] = array("type"=> "warning", "data" =>$tmp);
 
                     }
                     if(preg_match("/!|\?|♪|。|、/u", $tmp, $matches)){
@@ -500,8 +492,6 @@ function raitaa_do_checker ($content) {
     $warning  = "<div class='proofreading-result'>
 <div class='proofreading-summary'>
 <p><span class='proofreading-h2'>サマリー</span></p>";
-    $type = !($chapter["keyword"][0]["kws"]) ? "warning":"debug";
-    $results[-1]["keyword"] = array('type' => "debug", 'data' => (implode($chapter["keyword"][0]["kws"], " ") ));
 
     for ($i=-1; $i < count($t)+1; $i++) {
         $type = "debug";
@@ -532,20 +522,27 @@ function raitaa_do_checker ($content) {
                     $desc .= ("\n").(level_head($v["type"]))  .(strip_tags(warning_desc($k, $v["data"]))) ;
                 }
                 // echo "v:".($v["type"])." type:" .($type)."<br />";
-                $warning .="<span class='proofreading-item lv_".$type."'  title='".level_desc($type)."{$desc}'>$t[$i]</span><br />";
+                if($desc !== ""){
+                   $warning .="<span class='proofreading-item lv_".$type."'  title='".level_desc($type)."{$desc}'>$t[$i]</span><br />";
+                }
             }
         }else{
             $warning .= $t[$i]."<br />";
         }
     }
-$reduced_kws = $chapter["keyword"][0]["kws"];
-array_pop($reduced_kws);
-$query =  urlencode(implode($reduced_kws, " ") ) ;
-$warning  .= "
+    $type = !($chapter["keyword"][0]["kws"]) ? "warning":"debug";
+    if($chapter["keyword"]){
+        $results[-1]["keyword"] = array('type' => "debug", 'data' => (implode($chapter["keyword"][0]["kws"], " ") ));
+        $reduced_kws = $chapter["keyword"][0]["kws"];
+        array_pop($reduced_kws);
+        $query =  urlencode(implode($reduced_kws, " ") ) ;
+        $warning  .= "
 https://related-keywords.com/result/suggest?q={$query}
 https://rakko.tools/tools/3/
 https://ccd.cloud/
-";
+https://docs.google.com/spreadsheets/d/1Am84Wf2HDFCkfeXNKn3kF4gwfwtquAF3sNkFdTlawfk/edit#gid=112081895
+        ";
+    }
 
     return $warning ;
 }
@@ -564,6 +561,10 @@ function check_display($warning) {
         case "title_format":
         case "abst_list":
         case "post_name":
+        case "kuten":
+        case "hito":
+        case "kinku":
+        case "yodesu":
             return false;
             break;
         default:
@@ -654,7 +655,7 @@ function warning_desc($warning, $val) {
             $result = sprintf("メタディスクリプション(115~120文字) </span><br />%s", $val);
             break;
         case "metakw":
-            $result = sprintf("メタキーワード(5~6) </span><br />%s", $val);
+            $result = sprintf("メタキーワード(4~6) </span><br />%s", $val);
             break;
         case "tag":
             $result = sprintf("タグ(3つ) </span><br />%s", $val);
@@ -731,6 +732,9 @@ function warning_desc($warning, $val) {
         case "nanode":
             $result = sprintf("「なので」は使わない：<br />%s", $val);
             break;
+        case "between_long":
+            $result = sprintf("キーワードが左詰めになっていません<br />【%s】", $val);
+            break;
         default:
             $result = sprintf("{$warning} %s", $val);
             break;
@@ -793,12 +797,9 @@ if( isset($_GET['writer']) ){
 
 
 
-/* 校正情報プレビューボタン表示 */
 function writer_add_button() {
-
     global $post;
     global $current_user;
-
 // var_dump(get_currentuserinfo()->user_nicename);
 // var_dump($GLOBALS['current_screen']->in_admin( $user));
 //$user = $current_user->user_level
@@ -815,8 +816,10 @@ function writer_add_button() {
                 $query_args['writer'] = 'yes';
 
                 $url = html_entity_decode(esc_url(add_query_arg($query_args, get_permalink($page->ID))));
+echo $url
 ?>
 <script>
+
     (function($) {
         $('#minor-publishing-actions').append('<div class="proofreading-preview"><a id="proofreading-preview" class="button">仮添削する</a></div>');
         $(document).on('click', '#proofreading-preview', function(e) {
@@ -830,15 +833,55 @@ function writer_add_button() {
             }
         }
     }
-
 }
 
+function writer_add_button_columns($columns) {
+    global $post;
+    global $current_user;
+// var_dump(get_currentuserinfo()->user_nicename);
+// var_dump($GLOBALS['current_screen']->in_admin( $user));
+//$user = $current_user->user_level
+    $query_args = array();
+    if ( get_post_type_object( $post->post_type )->public ) {
+        if(get_currentuserinfo()->user_nicename === "mail5d98" || $current_user->user_level >5){
+            if ( 'publish' == $post->post_status || $user->ID != $post->post_author ) {
+                // Latest content is in autosave
+                $nonce = wp_create_nonce( 'post_preview_' . $post->ID );
+                $query_args['preview_id'] = $post->ID;
+                $query_args['preview_nonce'] = $nonce;
+                //判別用にクリエストリング「proofreading=yes」を追加
+                $query_args['preview'] = 'true';
+                $query_args['writer'] = 'yes';
+
+                $url = html_entity_decode(esc_url(add_query_arg($query_args, get_permalink($page->ID))));
+                $columns['subtitle'] = $url;
+
+            }
+        }
+    }
+}
 register_setting( 'weiting_setting', 'weiting_setting', 'sanitize' );
 
 add_action( 'admin_footer-post-new.php', 'writer_add_button' );
 add_action( 'admin_footer-post.php', 'writer_add_button' );
+// add_action('manage_posts_columns', 'writer_add_button_columns' );
 
+add_action( 'admin_menu', 'my_plugin_menu' );
 
+/** ステップ1 */
+function my_plugin_menu() {
+    add_options_page( 'My Plugin Options', 'My Plugin', 'manage_options', 'my-unique-identifier', 'my_plugin_options' );
+}
+
+/** ステップ3 */
+function my_plugin_options() {
+    if ( !current_user_can( 'manage_options' ) )  {
+        wp_die( __( 'You do not have sufficient permissions to access this page.' ) );
+    }
+    echo '<div class="wrap">';
+    echo '<p>オプション用のフォームをここに表示する。</p>';
+    echo '</div>';
+}
 function raitaa_keyword_meta_box() {
 
     add_meta_box(
@@ -921,14 +964,9 @@ function save_raitaa_keyword_meta_box_data( $post_id ) {
 add_action( 'save_post', 'save_raitaa_keyword_meta_box_data' );
 
 function raitaa_keyword_before_post( $content ) {
-
     global $post;
-
-    // retrieve the global notice for the current post
     $raitaa_keyword = esc_attr( get_post_meta( $post->ID, 'raitaa_keyword', true ) );
-
     $notice = "<div class='sp_raitaa_keyword'>$raitaa_keyword</div>";
-
     return $notice . $content;
 
 }
