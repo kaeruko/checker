@@ -575,6 +575,8 @@ function check_display($warning) {
         case "keyword":
         case "ending":
         case "too_strong":
+        case "chap_no":
+        case "no_color":
             return false;
             break;
         default:
@@ -831,7 +833,7 @@ echo $url
 <script>
 
     (function($) {
-        $('#minor-publishing-actions').append('<div class="proofreading-preview"><a id="proofreading-preview" class="button">仮添削する</a></div>');
+        $('#minor-publishing-actions').append('<div class="proofreading-preview"><a id="proofreading-preview" class="button">添削アシスト</a></div>');
         $(document).on('click', '#proofreading-preview', function(e) {
             e.preventDefault();
             PreviewURL = '<?php echo $url ?>';

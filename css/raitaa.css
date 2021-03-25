@@ -98,24 +98,23 @@
 }
 
 .proofreading-result .lv_warning {
-	background-color: #ffccff;
+	background-color: #ffcccc;
 }
 .proofreading-result .lv_warning h2 {
-	background-color: #cc99ff;
+	background-color: #ffcccc;
 }
 .proofreading-result .lv_warning h3 {
-	background-color: #ffccff;
+	background-color: #ffcccc;
 }
-
 .proofreading-result .lv_warning li {
-	background-color: #ffccff;
+	background-color: #ffcccc;
 }
 
 .proofreading-result .lv_debug {
 	background-color: #ccffcc;
 }
 .proofreading-result .lv_debug h2 {
-	background-color: #99cc33;
+	background-color: #ccffcc;
 }
 .proofreading-result .lv_debug h3 {
 	background-color: #ccffcc;
