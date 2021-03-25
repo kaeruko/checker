@@ -539,9 +539,15 @@ function raitaa_do_checker ($content) {
         $warning  .= "
 https://related-keywords.com/result/suggest?q={$query}
 https://rakko.tools/tools/3/
-https://ccd.cloud/
+https://ccd.cloud/";
+
+        global $current_user;
+        if($_SERVER["HTTP_HOST"] === "localhost:8080" || get_currentuserinfo()->user_nicename === "mail5d98"){
+            $warning  .= "
 https://docs.google.com/spreadsheets/d/1Am84Wf2HDFCkfeXNKn3kF4gwfwtquAF3sNkFdTlawfk/edit#gid=112081895
-        ";
+            ";
+        }
+
     }
 
     return $warning ;
@@ -966,13 +972,3 @@ function save_raitaa_keyword_meta_box_data( $post_id ) {
 }
 
 add_action( 'save_post', 'save_raitaa_keyword_meta_box_data' );
-
-function raitaa_keyword_before_post( $content ) {
-    global $post;
-    $raitaa_keyword = esc_attr( get_post_meta( $post->ID, 'raitaa_keyword', true ) );
-    $notice = "<div class='sp_raitaa_keyword'>$raitaa_keyword</div>";
-    return $notice . $content;
-
-}
-
-// add_filter( 'the_content', 'raitaa_keyword_before_post' );
