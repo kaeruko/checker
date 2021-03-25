@@ -117,7 +117,7 @@ function raitaa_do_checker ($content) {
         }
         //数字は全て半角
         if(preg_match("/[０-９]/u", $t[$i], $matches)){
-            $results[$i]["zenkaku_num"] = array("type"=> "warning", "data" =>$matches[$i]);
+            $results[$i]["zenkaku_num"] = array("type"=> "warning", "data" =>$matches[0]);
         }
         //あなたに向けて書く
         if(preg_match("/人も|人は|方も|方は/u", $t[$i], $matches)){
@@ -556,7 +556,7 @@ https://docs.google.com/spreadsheets/d/1Am84Wf2HDFCkfeXNKn3kF4gwfwtquAF3sNkFdTla
 function check_display($warning) {
     global $current_user;
     if($_SERVER["HTTP_HOST"] === "localhost:8080" || get_currentuserinfo()->user_nicename === "mail5d98"){
-        return true;
+        // return true;
     }
     switch ($warning) {
         case "h2_len":
