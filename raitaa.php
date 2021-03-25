@@ -509,6 +509,7 @@ function raitaa_do_checker ($content) {
             }else{
                 foreach ($results[$i] as $k => $v) {
                     if(!check_display($k)){
+                        $warning .= $t[$i];
                         continue;
                     }
 
@@ -555,7 +556,7 @@ https://docs.google.com/spreadsheets/d/1Am84Wf2HDFCkfeXNKn3kF4gwfwtquAF3sNkFdTla
 function check_display($warning) {
     global $current_user;
     if($_SERVER["HTTP_HOST"] === "localhost:8080" || get_currentuserinfo()->user_nicename === "mail5d98"){
-        return true;
+        // return true;
     }
     switch ($warning) {
         case "h2_len":
