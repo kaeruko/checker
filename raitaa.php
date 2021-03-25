@@ -574,7 +574,7 @@ function check_display($warning) {
         case "kanma":
         case "keyword":
         case "ending":
-        case "too_strong":
+        case "no_strong":
         case "chap_no":
         case "no_color":
             return false;
