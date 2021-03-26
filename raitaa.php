@@ -509,7 +509,6 @@ function raitaa_do_checker ($content) {
             }else{
                 foreach ($results[$i] as $k => $v) {
                     if(!check_display($k)){
-                        $warning .= $t[$i];
                         continue;
                     }
 
@@ -525,6 +524,8 @@ function raitaa_do_checker ($content) {
                 // echo "v:".($v["type"])." type:" .($type)."<br />";
                 if($desc !== ""){
                    $warning .="<span class='proofreading-item lv_".$type."'  title='".level_desc($type)."{$desc}'>$t[$i]</span><br />";
+                }else{
+                    $warning .= $t[$i];
                 }
             }
         }else{
