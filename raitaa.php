@@ -918,7 +918,7 @@ function raitaa_keyword() {
     register_post_type( 'raitaa_keyword', $args );
 }
 
-add_action( 'init', 'raitaa_keyword' );
+// add_action( 'init', 'raitaa_keyword' );
 
 function raitaa_keyword_meta_box_callback( $post ) {
 
