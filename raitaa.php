@@ -520,7 +520,7 @@ function raitaa_do_checker ($content) {
                        $type = "info";
                     }
 
-                    $desc .= ("\n").(level_head($v["type"]))  .(strip_tags(warning_desc($k, $v["data"]))) ;
+                    $desc .= ("\r\n").(level_head($v["type"]))  .(strip_tags(warning_desc($k, $v["data"]))) ;
                 }
                 // echo "v:".($v["type"])." type:" .($type)."<br />";
                 if($desc !== ""){
