@@ -3,6 +3,7 @@
 	font-family: "メイリオ","Hiragino Kaku Gothic Pro",Meiryo,"ヒラギノ角ゴ Pro W3","MS PGothic","MS UI Gothic",Helvetica,Arial,sans-serif;
 	border: 1px dotted #414852;
 	color: #333;
+	white-space:pre-wrap; word-wrap:break-word;
 }
 .proofreading-result p.proofreading-description{
 	padding-left: 15px;

@@ -254,7 +254,7 @@ function raitaa_do_checker ($content) {
                     }
                 }
                 //見出し2のキーワードの間に記号!,?,♪が入ってない
-                if(isset($chapter["keyword"][$n]) && preg_match("/{$tmp[0]}(.*?){$tmp[1]}(.*?){$tmp[2]}/u", $line, $m)){
+                if(isset($chapter["keyword"][$n]) && @preg_match("/{$tmp[0]}(.*?){$tmp[1]}(.*?){$tmp[2]}/u", $line, $m)){
                     if( count($chapter["keyword"][$n]["kws"]) === 2  ){
                         $tmp = $m[1];
                     }else{
@@ -297,19 +297,20 @@ function raitaa_do_checker ($content) {
             }
             //見出し2(まとめも)の下に画像がある
             if(preg_match("/src=.+?\".*? \"?/x", $t[$i], $matches)){
-                $filename = basename($matches[0]);
+                $file = pathinfo($matches[0]);
+
                 //ノルマの画像か
-                if(preg_match("/{$pm}/", $filename, $m)){
+                if(preg_match("/{$pm}/", $file['basename'], $m)){
                     $norma["img"] += 1;
                     //画像のサイズが横300形式がjpg
-                    if(substr($filename, -4,3) !== "jpg" ){
-                        $results[$i]["img_ext"] = array("type"=> "warning", "data" =>substr($matches[1], 3));
+                    if($file['extension'] !== 'jpg"' ){
+                        $results[$title_line]["img_ext"] = array("type"=> "warning", "data" =>$file['extension']);
                     }
 
                     //横サイズが300
                     if(preg_match("/width\=\"([0-9]+) /x", $t[$i], $matches)){
                         if($matches[1] !== "300"){
-                            $results[$i]["img_width"] = array("type"=> "warning", "data" =>$matches[1]);
+                            $results[$title_line]["img_width"] = array("type"=> "warning", "data" =>$matches[1]);
                         }
                     }
 
@@ -525,12 +526,15 @@ function raitaa_do_checker ($content) {
                 if($desc !== ""){
                    $warning .="<span class='proofreading-item lv_".$type."'  title='".level_desc($type)."{$desc}'>$t[$i]</span><br />";
                 }else{
-                    $warning .= $t[$i];
+                $warning .= "<p>".$t[$i]."</p>";
                 }
             }
         }else{
-            $warning .= $t[$i]."<br />";
+            $warning .= "<p>".$t[$i]."</p>";
         }
+// var_dump(  (htmlspecialchars($warning)));
+// var_dump(  "----<br />\n" );
+
     }
     $type = !($chapter["keyword"][0]["kws"]) ? "warning":"debug";
     if($chapter["keyword"]){
@@ -748,6 +752,12 @@ function warning_desc($warning, $val) {
         case "between_long":
             $result = sprintf("キーワードが左詰めになっていません<br />【%s】", $val);
             break;
+        case "img_ext":
+            $result = sprintf("画像の拡張子がjpg以外です【%s】", $val);
+            break;
+        case "img_width":
+            $result = sprintf("画像の幅が300以外です【%s】", $val);
+            break;
         default:
             $result = sprintf("{$warning} %s", $val);
             break;
@@ -851,10 +861,11 @@ echo $url
 function writer_add_button_columns($columns) {
     global $post;
     global $current_user;
-    if(get_currentuserinfo()->user_nicename !== "mail5d98" && get_currentuserinfo()->user_nicename !== "wp"){
+    if(get_currentuserinfo()->user_nicename !== "mail5d98" &&
+       get_currentuserinfo()->user_nicename !== "wp"){
         return $columns;
     }
-    $columns['raitaa_check'] = "仮添削";
+    $columns['raitaa_check'] = "添削アシ";
     return $columns;
 }
 
@@ -878,7 +889,7 @@ function add_column_value ($column_name, $post_ID) {
                 $query_args['writer'] = 'yes';
 
                 $url = html_entity_decode(esc_url(add_query_arg($query_args, get_permalink($page->ID))));
-                echo "<a href=".$url.">添削</a>";
+                echo "<a href=".$url.">添削アシ</a>";
 
             }
         }
