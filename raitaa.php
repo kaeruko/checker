@@ -902,7 +902,7 @@ function add_column_value ($column_name, $post_ID) {
                 $query_args['writer'] = 'yes';
 
                 $url = html_entity_decode(esc_url(add_query_arg($query_args, get_permalink($page->ID))));
-                echo "<a href=".$url.">添削</a>";
+echo "<a href=".$url.">添削</a>";
 
             }
         }
@@ -917,6 +917,14 @@ register_setting( 'weiting_setting', 'weiting_setting', 'sanitize' );
 add_action( 'admin_footer-post-new.php', 'writer_add_button' );
 add_action( 'admin_footer-post.php', 'writer_add_button' );
 add_action('manage_posts_columns', 'writer_add_button_columns' );
+
+add_action('admin_print_styles', function () {
+  echo '<style>
+  .column-raitaa_check{
+    width:30px;
+  }
+  </style>'.PHP_EOL;
+});
 
 
 function raitaa_keyword_meta_box() {
