@@ -8,12 +8,10 @@ Version: 1.0.0
 Author URI:
 */
 
-
 function raitaa_do_checker ($content) {
     if(!isset($_GET['preview_id']) || !isset($_GET['writer']) ){
         return;
     }
-
     $content = preg_replace( '/<p>|<\/p>/msi','',$content);
 
     $t = preg_split("/[\n|\r]+/", $content);
@@ -140,6 +138,10 @@ function raitaa_do_checker ($content) {
                 $results[$i]["zenkaku_kigo"] = array("type"=> "warning", "data" =>$_m[0]);
             }
 
+            if($norma["strong"] === 0 && !$abstract ){
+                // error_log(print_r("{$t[$title_line]}\n"));
+                $results[$title_line]["no_strong"] = array("type" =>"warning", "data" => $norma["strong"]);
+            }
 
             if(@$matches[1] === "<h2>" || $tcount == ($i+1)){
                 $ret = is_blank($t, $i, -2);
@@ -152,7 +154,7 @@ function raitaa_do_checker ($content) {
                 //導入文の文字数が300~350
                 // error_log(print_r("intro_count:{$intro_count}"));
                 if($chapter["number"] === -1 ){
-                    $intro_count -=0.5;
+                    $intro_count -= 1;
                     $type = ($intro_count < 250 || $intro_count > 350) ? "warning":"debug";
                     $results[-1]["intro_count"] = array("type" => $type, "data"=>$intro_count);
 
@@ -163,10 +165,6 @@ function raitaa_do_checker ($content) {
                     $results[$title_line]["no_color"] = array("type" =>"warning", "data" => $norma["color"]);
                 }
 
-                if($norma["strong"] === 0 && !$abstract ){
-                    // error_log(print_r("{$t[$title_line]}\n"));
-                    $results[$title_line]["no_strong"] = array("type" =>"warning", "data" => $norma["strong"]);
-                }
 
                 if($norma["img"] === 0 && $chapter["number"] !== -1){
                     $results[$title_line]["no_img"] = array("type" =>"warning", "data" => $norma["img"]);
@@ -180,13 +178,16 @@ function raitaa_do_checker ($content) {
                 if(!$norma["kwcount"] ){
                     $type = "warning";
                 }
+
                 foreach ($norma["kwcount"] as $k => $v) {
                 // error_log(print_r("\n$t[$i] {$k}が{$v}:\n"));
                     if($v < 3){
                         $type = "warning";
+
                     }
                     $tmp .= "{$k}:{$v} ";
                 }
+
                 $type = ($type === "warning" || count($norma["kwcount"]) <  count($chapter["keyword"][$n]["kws"])  ) ? "warning":"debug";
 
                 $chap_no = get_summary($chapter["number"], $abstract);
@@ -194,6 +195,7 @@ function raitaa_do_checker ($content) {
                     $results[$title_line]["kwcheck"]["type"] = $type;
                 }
                 $kekka = ($type === "warning") ? "△" : "🌸";
+
 
                 if($title_line === -1){
                     $results[$title_line]["kwcheck"]["data"] .= "{$kekka}{$chap_no}:{$tmp}";
@@ -298,11 +300,11 @@ function raitaa_do_checker ($content) {
             //見出し2(まとめも)の下に画像がある
             if(preg_match("/src=.+?\".*? \"?/x", $t[$i], $matches)){
                 $file = pathinfo($matches[0]);
-
                 //ノルマの画像か
                 if(preg_match("/{$pm}/", $file['basename'], $m)){
                     $norma["img"] += 1;
                     //画像のサイズが横300形式がjpg
+// var_dump($pm);
                     if($file['extension'] !== 'jpg"' ){
                         $results[$title_line]["img_ext"] = array("type"=> "warning", "data" =>$file['extension']);
                     }
@@ -327,7 +329,8 @@ function raitaa_do_checker ($content) {
             }
             //導入文の文字数をプラス
             if($chapter["number"] === -1){
-                $intro_count += get_len($line)+1;
+                $intro_count += 1;
+                $intro_count += get_len($line);
             }
 
 
@@ -481,10 +484,10 @@ function raitaa_do_checker ($content) {
         $results[-1]["kanma"] = array("type"=> "warning", "data" =>$_m[0]);
     }
     //見出しの?、!が半角か
-    if(preg_match("/？|！|♪/u", $title, $_m)){
+    if(preg_match("/？|！/u", $title, $_m)){
         $results[-1]["zenkaku_kigo"] = array("type"=> "warning", "data" =>$_m[0]);
     }
-
+    //Bとタイトルと目次をあわせる
 
     //ステータスチェック
     $type = !preg_match("/作成中|添削依頼/u", $tmp[0], $_) ? "warning":"debug";
@@ -765,8 +768,16 @@ function warning_desc($warning, $val) {
     return $result;
 }
 
-function get_len($string) {
-    return mb_strwidth($string,'UTF-8')/2;
+
+function get_len( $text ){
+  $minus_lf = 0;
+  $tempWholeLen = strlen(mb_convert_encoding($text, "SJIS", "ASCII,JIS,UTF-8,EUC-JP,SJIS")) / 2;
+  //改行の数を検出
+  preg_match_all("\n|\r\n|\r", $text, $matches, PREG_PATTERN_ORDER);
+  $lfCount = count($matches[0]);
+  $minus_lf += ($lfCount/2);//改行1つを0.5文字として扱う
+  $modifiedWholeLen = $tempWholeLen - $minus_lf;//減算
+  return $modifiedWholeLen;
 }
 
 function get_summary($chap_no, $abstract) {
@@ -861,11 +872,13 @@ echo $url
 function writer_add_button_columns($columns) {
     global $post;
     global $current_user;
-    if(get_currentuserinfo()->user_nicename !== "mail5d98" &&
-       get_currentuserinfo()->user_nicename !== "wp"){
+    if(get_currentuserinfo()->user_nicename !== "mail5d98" && $current_user->user_level < 5){
         return $columns;
+    // if(get_currentuserinfo()->user_nicename !== "mail5d98" &&
+    //    get_currentuserinfo()->user_nicename !== "wp"){
+    //     return $columns;
     }
-    $columns['raitaa_check'] = "添削アシ";
+    $columns['raitaa_check'] = "添削";
     return $columns;
 }
 
@@ -889,7 +902,7 @@ function add_column_value ($column_name, $post_ID) {
                 $query_args['writer'] = 'yes';
 
                 $url = html_entity_decode(esc_url(add_query_arg($query_args, get_permalink($page->ID))));
-                echo "<a href=".$url.">添削アシ</a>";
+                echo "<a href=".$url.">添削</a>";
 
             }
         }
