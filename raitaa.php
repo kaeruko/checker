@@ -880,7 +880,7 @@ function writer_add_button_columns($columns) {
     //    get_currentuserinfo()->user_nicename !== "wp"){
     //     return $columns;
     }
-    $columns['raitaa_check'] = "添削";
+    // $columns['raitaa_check'] = "添削";
     return $columns;
 }
 
