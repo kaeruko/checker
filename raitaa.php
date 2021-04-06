@@ -9,7 +9,7 @@ Author URI:
 */
 
 function raitaa_do_checker ($content) {
-    if(!isset($_GET['preview_id']) || !isset($_GET['writer']) ){
+    if(!isset($_GET['p']) || !isset($_GET['writer']) ){
         return;
     }
     $content = preg_replace( '/<p>|<\/p>/msi','',$content);
@@ -471,7 +471,7 @@ function raitaa_do_checker ($content) {
     // $a = get_post_meta_by_id($_GET['preview_id']);
     // $b = get_post_meta($a["meta_id"]);
     // error_log(print_r( get_post($_GET['preview_id'] )->post_title));
-    $data = get_post($_GET['preview_id'] );
+    $data = get_post($_GET['p'] );
     $tmp = preg_split("/(　| )+/", $data->post_title);
     $title = $tmp[count($tmp)-1];
     $len = get_len($title);
@@ -770,6 +770,8 @@ function warning_desc($warning, $val) {
 
 
 function get_len( $text ){
+    return (mb_strwidth(($text))/2);
+
   $minus_lf = 0;
   $tempWholeLen = strlen(mb_convert_encoding($text, "SJIS", "ASCII,JIS,UTF-8,EUC-JP,SJIS")) / 2;
   //改行の数を検出
@@ -808,7 +810,7 @@ function is_blank($t, $i, $check) {
 function raitaa_css () {
     //プレビュー画面かつ「校正情報プレビュー」ボタンから呼ばれた時にのみ処理を実施
     //is_preview()が正常に動作しないケースに遭遇したため、クエリストリングでプレビュー状態かどうか判断しています。
-    if(isset($_GET['preview_id']) and isset($_GET['writer']) ){
+    if(isset($_GET['p']) and isset($_GET['writer']) ){
         wp_register_style(
             'proofreading',
             plugins_url('css/raitaa.css', __FILE__),
@@ -843,7 +845,7 @@ function writer_add_button() {
             if ( 'publish' == $post->post_status || $user->ID != $post->post_author ) {
                 // Latest content is in autosave
                 $nonce = wp_create_nonce( 'post_preview_' . $post->ID );
-                $query_args['preview_id'] = $post->ID;
+                // $query_args['preview_id'] = $post->ID;
                 $query_args['preview_nonce'] = $nonce;
                 //判別用にクリエストリング「proofreading=yes」を追加
                 $query_args['preview'] = 'true';
@@ -895,7 +897,7 @@ function add_column_value ($column_name, $post_ID) {
             if ( 'publish' == $post->post_status || $user->ID != $post->post_author ) {
                 // Latest content is in autosave
                 $nonce = wp_create_nonce( 'post_preview_' . $post->ID );
-                $query_args['preview_id'] = $post->ID;
+                // $query_args['preview_id'] = $post->ID;
                 $query_args['preview_nonce'] = $nonce;
                 //判別用にクリエストリング「proofreading=yes」を追加
                 $query_args['preview'] = 'true';
