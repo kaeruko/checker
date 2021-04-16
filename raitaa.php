@@ -883,7 +883,7 @@ function writer_add_button_columns($columns) {
     //     return $columns;
     }
     $columns['raitaa_check'] = "添削";
-    // return $columns;
+    return $columns;
 }
 
 
