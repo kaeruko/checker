@@ -38,7 +38,8 @@ function raitaa_do_checker ($content) {
 
     //メタディスクリプション
     $the_page_meta_description = (get_post_meta($id, 'the_page_meta_description', true));
-    $tmp = get_len($the_page_meta_description);
+    $tmp = mb_strlen($the_page_meta_description);
+
     $type = ($tmp > 120 || $tmp < 115) ? "warning":"debug";
     $results[-1]["meta_desc"] = array('type' => $type, 'data' => "{$the_page_meta_description}({$tmp}文字)");
     //メタキーワード
@@ -60,6 +61,7 @@ function raitaa_do_checker ($content) {
     if($chapter["keyword"]){
         $type = (count($tags) !== count($chapter["keyword"][0]["kws"])) ? "warning":"debug";
     }
+
     $results[-1]["tag"] = array('type' => $type, 'data' => implode("-", $tags) . "(". (count($tags)).")");
     //カテゴリー
     $category = array_map(function($tag) { return $tag->name; },get_the_category());
@@ -198,12 +200,12 @@ function raitaa_do_checker ($content) {
 
 
                 if($title_line === -1){
-                    $results[$title_line]["kwcheck"]["data"] .= "{$kekka}{$chap_no}:{$tmp}";
+                    $results[$title_line]["kwcheck"]["data"] .= "{$kekka}{$chap_no} {$tmp}";
 
                 }else{
                     $results[$title_line]["kwcheck"]["data"] .= "{$tmp}";
                     $results[-1]["kwcheck"]["type"] = $type;
-                    $results[-1]["kwcheck"]["data"] .= "<br />{$kekka}{$chap_no}:{$tmp}";
+                    $results[-1]["kwcheck"]["data"] .= "<br />{$kekka}{$chap_no} {$tmp}";
                 }
 
                 //見出し3の数
@@ -340,7 +342,7 @@ function raitaa_do_checker ($content) {
                 //改行までの文字列がスマホで2行~4行に収まる
                 $l = get_len($line);
                 // error_log(print_r("get_len:{$line}\n"));
-                if($l < 21){
+                if($l < 22){
                     $results[$i]["tooshort"] = array("type"=> "warning", "data" =>$l);
                     //下の行がリストタグ
                 }elseif($l > 84){
@@ -655,7 +657,7 @@ function warning_desc($warning, $val) {
             $result = sprintf("？ ！ 。 ♪ ) 以外の文末です 【%s】△", $val);
             break;
         case "tooshort":
-            $result = sprintf("スマホで見ると1行です 21~84文字推奨【現在%s文字】△", $val);
+            $result = sprintf("スマホで見ると1行です 22~84文字推奨【現在%s文字】△", $val);
             break;
         case "toolong":
             $result = sprintf("スマホで見ると4行以上です 21~84文字推奨【現在%s文字】△", $val);
@@ -880,8 +882,8 @@ function writer_add_button_columns($columns) {
     //    get_currentuserinfo()->user_nicename !== "wp"){
     //     return $columns;
     }
-    // $columns['raitaa_check'] = "添削";
-    return $columns;
+    $columns['raitaa_check'] = "添削";
+    // return $columns;
 }
 
 
