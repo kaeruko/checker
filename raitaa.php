@@ -876,11 +876,9 @@ echo $url
 function writer_add_button_columns($columns) {
     global $post;
     global $current_user;
-    if(get_currentuserinfo()->user_nicename !== "mail5d98" && $current_user->user_level < 5){
+    if(get_currentuserinfo()->user_nicename !== "mail5d98" &&
+       get_currentuserinfo()->user_nicename !== "wp"){
         return $columns;
-    // if(get_currentuserinfo()->user_nicename !== "mail5d98" &&
-    //    get_currentuserinfo()->user_nicename !== "wp"){
-    //     return $columns;
     }
     $columns['raitaa_check'] = "添削";
     return $columns;
