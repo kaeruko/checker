@@ -44,13 +44,14 @@ function raitaa_do_checker ($content) {
     $results[-1]["meta_desc"] = array('type' => $type, 'data' => "{$the_page_meta_description}({$tmp}文字)");
     //メタキーワード
     $metakw = get_post_meta($id, 'the_page_meta_keywords', true);
-    if($metakw){
-        $metakw = explode(",", $metakw);
-        $type = (count($metakw) < 4) ? "warning":"debug";
-        $results[-1]["metakw"] = array('type' => $type, 'data' => (implode("-", $metakw))."(".(count($metakw)).")" );
-    }else{
-        $results[-1]["metakw"] = array('type' => "warning", 'data' => null );        
-    }
+    // if($metakw){
+    //     $metakw = explode(",", $metakw);
+    //     $type = (count($metakw) < 4) ? "warning":"debug";
+    //     $results[-1]["metakw"] = array('type' => $type, 'data' => (implode("-", $metakw))."(".(count($metakw)).")" );
+    // }else{
+    //     $results[-1]["metakw"] = array('type' => "warning", 'data' => null );        
+    // }
+    //メタキーワードは入れない、入れてたらアラート
     //メタタグ
     $tags = get_the_tags();
     if($tags){
@@ -123,7 +124,7 @@ function raitaa_do_checker ($content) {
         if(preg_match("/人も|人は|方も|方は/u", $t[$i], $matches)){
             $results[$i]["hito"] = array("type"=> "info", "data" => $matches[0]);
         }
-        if(preg_match("/更に|殆ど|下さい|事は|そう言う|お早う|そんな風に|の方|出来る|恐る恐る|何時か|何処か|何故か|良い|捗る|後で|人達|電話を掛ける|ひと通り|ご免なさい|丁度|経つ|易い|何でも|頂いた|合わせて|行こう|致し|様々|全て|通り|そんな風/u", $t[$i], $matches)){
+        if(preg_match("/是非|更に|殆ど|下さい|事は|そう言う|お早う|そんな風に|の方|出来る|恐る恐る|何時か|何処か|何故か|良い|捗る|後で|人達|電話を掛ける|ひと通り|ご免なさい|丁度|経つ|易い|何でも|頂いた|合わせて|行こう|致し|様々|全て|通り|そんな風/u", $t[$i], $matches)){
 // var_dump(htmlspecialchars( $t[$i]));
             $results[$i]["kinku"] = array("type"=> "info", "data" => $matches[0]);
         }
@@ -337,7 +338,7 @@ function raitaa_do_checker ($content) {
 
 
             //リストタグの場合は字数や文末をチェックしない
-            if($len_check && !preg_match("/<li>|<\/li>/u", $t[$i], $matches)){
+            if($len_check && preg_match("/<li>|<\/li>/u", $t[$i], $matches)){
                 $ending_check = false;
                 //改行までの文字列がスマホで2行~4行に収まる
                 $l = get_len($line);
@@ -457,7 +458,8 @@ function raitaa_do_checker ($content) {
         //皆さんはダメ
         //autokanaで。中身を見れば英字になってるところあるはず画像名生成　zuでもduでもでるのか
         //2重装飾は控える
-        //word校正はしましたか？、コピペチェックは%でしたか？添削依頼表をセットし、添削が終わったら黄色を塗ろう(依頼表へのリンクGoogleスプレッドシートAPIでできるかも)。リビジョンを更新しましょう、編集画面を閉じましょう
+        //word校正はしましたか？、コピペチェックは%でしたか？添削依頼表をセットし、添削が終わったら黄色を塗ろう(依頼表へのリンクGoogleスプレッドシートAPIでできるかも)。リビジョンを更新しましょう、編集画面を閉じましょう 見出しとBが対の関係に
+
 
     }
     //まとめのリストタグが4000文字を超える場合6~8
@@ -467,7 +469,7 @@ function raitaa_do_checker ($content) {
 
     $results[-1]["article_length"] = array('type' => "debug", 'data' => get_len( strip_tags($content)) );
     //見出し2はまとめいれて4つ以上
-    $type = ($chapter["number"] < 3) ? "warning":"debug";
+    $type = ($chapter["number"] < 4) ? "warning":"debug";
     $results[-1]["chap_no"] = array('type' => $type, 'data' =>$chapter["number"]);
 
     // $a = get_post_meta_by_id($_GET['preview_id']);
@@ -541,6 +543,9 @@ function raitaa_do_checker ($content) {
 // var_dump(  "----<br />\n" );
 
     }
+    //目次チェック
+    //ターゲットチェック（わかってるはずのことを言わない）
+    //見出しとBが対の関係になるように
     $type = !($chapter["keyword"][0]["kws"]) ? "warning":"debug";
     if($chapter["keyword"]){
         $results[-1]["keyword"] = array('type' => "debug", 'data' => (implode($chapter["keyword"][0]["kws"], " ") ));
@@ -789,6 +794,8 @@ function get_summary($chap_no, $abstract) {
         return "導入文";
     }elseif ($abstract) {
         return "まとめ";
+    }elseif($chap_no === 0){
+        return "指定キーワード";
     }else{
         return "見出し2-".($chap_no+1);
     }
