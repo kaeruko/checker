@@ -288,17 +288,13 @@ function raitaa_do_checker ($content) {
                 $results[$title_line]["localhost"] = array("type"=> "warning", "data" => (get_summary($chapter["number"], $abstract)) ." ". ($matches[0]) );
             }
 
-
-            if(preg_match("/<\/div>/", $t[$i], $matches)){
-                $len_check = true;
-                $ending_check = true;
-            }
-
-            if($len_check && preg_match("/<div class=\"(.*?)\">/", $t[$i], $matches)){
+            if($len_check && 
+                ( preg_match("/<div class=\"(.*?)\">/", $t[$i], $matches) || 
+                preg_match("/<li class=\"(.*?)\">/", $t[$i], $matches))){
                 $len_check = false;
-                if($matches[1] !== "speech-balloon"){
+                // if($matches[1] !== "speech-balloon"){
                     $ending_check = false;
-                }
+                // }
             }
             //見出し2(まとめも)の下に画像がある
             if(preg_match("/src=.+?\".*? \"?/x", $t[$i], $matches)){
@@ -338,25 +334,30 @@ function raitaa_do_checker ($content) {
 
 
             //リストタグの場合は字数や文末をチェックしない
-            if($len_check && preg_match("/<li>|<\/li>/u", $t[$i], $matches)){
-                $ending_check = false;
+            if($len_check && !preg_match("/<li>|<\/li>/u", $t[$i], $matches)){
                 //改行までの文字列がスマホで2行~4行に収まる
                 $l = get_len($line);
                 // error_log(print_r("get_len:{$line}\n"));
                 if($l < 22){
                     $results[$i]["tooshort"] = array("type"=> "warning", "data" =>$l);
                     //下の行がリストタグ
-                }elseif($l > 84){
+                }elseif($l > 83){
                     $results[$i]["toolong"] = array("type"=> "warning", "data" =>$l);
                 }
             }
-            if($ending_check){
+            if($ending_check && !preg_match("/<li>|<\/li>/u", $t[$i], $matches)){
                 //文末に。か？か！か♪が入っている(まとめ、空行、タイトル、テーブル以外)
                 if(!preg_match("/(？|！|。|♪|\)|」|）)$/u", $line, $matches)){
                     //下の行がリストタグ
                     preg_match("/.$/u", $line, $matches);
                     $results[$i]["ending"] = array("type"=> "warning", "data" =>$matches[0]);
                 }
+            }
+
+            if(preg_match("/<\/div>/", $t[$i], $matches)||
+                preg_match("/<\/li>/", $t[$i], $matches)){
+                $len_check = true;
+                $ending_check = true;
             }
 
             //まとめの箇条書きカウント
@@ -375,8 +376,6 @@ function raitaa_do_checker ($content) {
                     }
                 }
             }
-
-
 
 
             //shift+enter
@@ -551,9 +550,11 @@ function raitaa_do_checker ($content) {
         $results[-1]["keyword"] = array('type' => "debug", 'data' => (implode($chapter["keyword"][0]["kws"], " ") ));
         $reduced_kws = array($chapter["keyword"][0]["kws"][0],$chapter["keyword"][0]["kws"][1]);
         $query =  urlencode(implode($reduced_kws, " ") ) ;
+        $count_query =  urlencode(implode($chapter["keyword"][0]["kws"], " ") ) ;
         $warning  .= "
 https://related-keywords.com/result/suggest?q={$query}
 https://rakko.tools/tools/3/
+https://related-keywords.com/result/headline?q={$count_query}
 https://ccd.cloud/";
 
         global $current_user;
