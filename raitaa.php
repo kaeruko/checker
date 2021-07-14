@@ -324,7 +324,7 @@ function raitaa_do_checker ($content) {
                 if($chapter["number"] === -1){
                     // $intro_count += 0.5;
                 }
-                continue;
+                // continue;
             }
             //導入文の文字数をプラス
             if($chapter["number"] === -1){
@@ -334,26 +334,30 @@ function raitaa_do_checker ($content) {
 
 
             //リストタグの場合は字数や文末をチェックしない
-            if($len_check && !preg_match("/<li>|<\/li>/u", $t[$i], $matches)){
-                //改行までの文字列がスマホで2行~4行に収まる
-                $l = get_len($line);
-                // error_log(print_r("get_len:{$line}\n"));
-                if($l < 22){
-                    $results[$i]["tooshort"] = array("type"=> "warning", "data" =>$l);
-                    //下の行がリストタグ
-                }elseif($l > 83){
-                    $results[$i]["toolong"] = array("type"=> "warning", "data" =>$l);
+            if($line !== ""){
+                if($len_check && !preg_match("/<li>|<\/li>/u", $t[$i], $matches)){
+                    //改行までの文字列がスマホで2行~4行に収まる
+                    $l = get_len($line);
+                    // error_log(print_r("get_len:{$line}\n"));
+                    if($l < 22){
+                        $results[$i]["tooshort"] = array("type"=> "warning", "data" =>$l);
+                        //下の行がリストタグ
+                    }elseif($l > 83){
+                        $results[$i]["toolong"] = array("type"=> "warning", "data" =>$l);
+                    }
+                }
+                if($ending_check && !preg_match("/<li>|<\/li>/u", $t[$i], $matches)){
+                    //文末に。か？か！か♪が入っている(まとめ、空行、タイトル、テーブル以外)
+                    if(!preg_match("/(？|！|。|♪|\)|」|）)$/u", $line, $matches)){
+                        //下の行がリストタグ
+                        preg_match("/.$/u", $line, $matches);
+                        $results[$i]["ending"] = array("type"=> "warning", "data" =>$matches[0]);
+                    }
                 }
             }
-            if($ending_check && !preg_match("/<li>|<\/li>/u", $t[$i], $matches)){
-                //文末に。か？か！か♪が入っている(まとめ、空行、タイトル、テーブル以外)
-                if(!preg_match("/(？|！|。|♪|\)|」|）)$/u", $line, $matches)){
-                    //下の行がリストタグ
-                    preg_match("/.$/u", $line, $matches);
-                    $results[$i]["ending"] = array("type"=> "warning", "data" =>$matches[0]);
-                }
-            }
-
+            //文章＋閉じタグが同じ行にある場合
+            //チェックしてはならないので
+            //チェック後にチェックフラグを変更
             if(preg_match("/<\/div>/", $t[$i], $matches)||
                 preg_match("/<\/li>/", $t[$i], $matches)){
                 $len_check = true;
